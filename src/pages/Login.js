@@ -35,7 +35,7 @@ const Login = () => {
           },
         });
       } else {
-        alert('Credenciales incorrectas');
+        alert('Credenciales incorrectas.');
       }
     } catch (error) {
       if (
