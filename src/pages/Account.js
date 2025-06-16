@@ -2,49 +2,70 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, List, message, Input } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
+import { useAuth0 } from '@auth0/auth0-react';  // <-- Importa Auth0
+import { DownloadOutlined } from '@ant-design/icons';
 
 const Account = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { name, username } = location.state || {};
 
+  const { user, getAccessTokenSilently, isAuthenticated } = useAuth0(); // <-- Usa Auth0
+
   const [transactions, setTransactions] = useState([]);
   const [totpToken, setTotpToken] = useState(sessionStorage.getItem('totpToken') || '');
   const [needsTotp, setNeedsTotp] = useState(!sessionStorage.getItem('totpToken'));
   const [inputTotp, setInputTotp] = useState('');
   const [updatedBalance, setUpdatedBalance] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const fetchTransactions = async (token) => {
+  // NUEVA fetchTransactions con Auth0 y Bearer Token
+  const fetchTransactions = async () => {
+    if (!user?.email) return;
+
+    setLoading(true);
+
     try {
-      const res = await fetch('https://raulocoin.onrender.com/api/transactions', {
+      const accessToken = await getAccessTokenSilently();
+
+      const response = await fetch('https://raulocoin.onrender.com/api/auth0/transactions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, totpToken: token })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ email: user.email }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!data.success) {
-        setNeedsTotp(true);
-        sessionStorage.removeItem('totpToken');
-        return;
+      if (response.ok && data.success) {
+        setTransactions(data.transactions);
+        setNeedsTotp(false); // asumo que con Auth0 no necesitas TOTP
+        sessionStorage.setItem('totpToken', ''); // limpio si estaba
+        setTotpToken('');
+      } else if (response.status === 401 && data.needsRefresh) {
+        message.error('Sesión expirada, por favor inicia sesión de nuevo.');
+        // podrías hacer logout o refresh aquí si quieres
+      } else {
+        message.error(data.message || 'Error al obtener transacciones');
       }
-
-      setTransactions(data.transactions);
-      sessionStorage.setItem('totpToken', token);
-      setTotpToken(token);
-      setNeedsTotp(false);
-    } catch (err) {
+    } catch (error) {
       message.error('Error de red al obtener transacciones');
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchBalance = async (token) => {
+  const fetchBalance = async () => {
+    if (!user?.email) return;  // Asegurarse que user.email exista
+
     try {
-      const res = await fetch('https://raulocoin.onrender.com/api/balance', {
+      const res = await fetch('https://raulocoin.onrender.com/api/auth0/balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, totpToken: token })
+        body: JSON.stringify({ email: user.email }) // <-- envío email
       });
 
       const data = await res.json();
@@ -56,16 +77,20 @@ const Account = () => {
       }
     } catch (err) {
       message.error('Error de red al obtener saldo');
+      console.error(err);
     }
   };
 
-  useEffect(() => {
-    if (username && totpToken) {
-      fetchTransactions(totpToken);
-      fetchBalance(totpToken);
-    }
-  }, [username, totpToken]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTransactions();
+      fetchBalance();  // llamo sin parámetros
+    }
+  }, [isAuthenticated, user]);
+
+
+  // Mantengo el handler del TOTP y Logout igual para que funcione la parte de autenticación local
   const handleTotpSubmit = () => {
     if (!inputTotp.trim()) {
       message.error('Ingresá el código TOTP');
@@ -73,7 +98,9 @@ const Account = () => {
     }
 
     const token = inputTotp.trim();
-    fetchTransactions(token);
+    // Aquí podrías llamar a fetchTransactions con token, pero como ahora usamos Auth0, no lo haré
+    // Si quieres compatibilidad, podrías hacer:
+    // fetchTransactionsConTotp(token);
     fetchBalance(token);
     setInputTotp('');
   };
@@ -123,29 +150,54 @@ const Account = () => {
       ) : (
         <div className='history-container'>
           <h2>Historial de Transferencias</h2>
-          <List
-            style={{ marginTop: 20 }}
-            header={<strong>Historial de Transacciones</strong>}
-            bordered
-            dataSource={transactions}
-            renderItem={(tx) => {
-              const isSent = tx.type === 'sent';
-              const counterpart = isSent
-                ? tx.toName || 'Desconocido'
-                : tx.fromName || tx.awardedBy || 'Sistema';
 
-              return (
-                <List.Item>
-                  <div style={{ width: '100%' }}>
-                    <p><strong>{isSent ? 'Enviado a' : 'Recibido de'}:</strong> {counterpart}</p>
-                    <p><strong>Monto:</strong> {tx.amount > 0 ? '+' : ''}{tx.amount}</p>
-                    <p><strong>Descripción:</strong> {tx.description}</p>
-                    <p><strong>Fecha:</strong> {new Date(tx.createdAt * 1000).toLocaleString()}</p>
-                  </div>
-                </List.Item>
-              );
-            }}
-          />
+          {loading ? (
+            <p>Cargando transacciones...</p>
+          ) : transactions.length > 0 ? (
+            <List
+              style={{ marginTop: 20 }}
+              header={<strong>Historial de Transacciones</strong>}
+              bordered
+              dataSource={transactions.slice(0, 3)} // <-- solo las primeras 3
+              renderItem={(tx) => {
+                const isSent = tx.type === 'sent';
+                const counterpart = isSent
+                  ? tx.toName || 'Desconocido'
+                  : tx.fromName || tx.awardedBy || 'Sistema';
+
+                return (
+                  <List.Item style={{ position: 'relative', paddingTop: 30 }}>
+                    <Button
+                      type="text"
+                      icon={<DownloadOutlined style={{ fontSize: 20, color: 'black' }} />}
+                      onClick={() => navigate('/comprobante', { state: { tx } })}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        padding: '6px 12px',
+                      }}
+                    />
+                    <div style={{ width: '100%' }}>
+                      <p><strong>{isSent ? 'Enviado a' : 'Recibido de'}:</strong> {counterpart}</p>
+                      <p><strong>Monto:</strong> {tx.amount > 0 ? '+' : ''}{tx.amount}</p>
+                      <p><strong>Descripción:</strong> {tx.description}</p>
+                      <p><strong>Fecha:</strong> {new Date(tx.createdAt * 1000).toLocaleString()}</p>
+                    </div>
+                  </List.Item>
+                );
+              }}
+            />
+          ) : (
+            <p>No hay transacciones para mostrar.</p>
+          )}
+          <Button
+            type="link"
+            style={{ marginTop: 10 }}
+            onClick={() => navigate('/historial', { state: { transactions, name, username } })}
+          >
+            Ver todas las transferencias
+          </Button>
         </div>
       )}
     </div>
@@ -153,5 +205,3 @@ const Account = () => {
 };
 
 export default Account;
-
-
