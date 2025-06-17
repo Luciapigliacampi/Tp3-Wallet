@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import { DownloadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const Historial = () => {
     const location = useLocation();
@@ -15,7 +16,7 @@ const Historial = () => {
     const { user, getAccessTokenSilently } = useAuth0();
     const [transactions, setTransactions] = useState([]);
     const [filteredTransactions, setFilteredTransactions] = useState([]);
-    const [selectedDate, setSelectedDate] = useState(null);
+    const [dateRange, setDateRange] = useState([]);
     const [aliasFilter, setAliasFilter] = useState('');
     const [transactionType, setTransactionType] = useState('todos');
     const [loading, setLoading] = useState(true);
@@ -56,15 +57,15 @@ const Historial = () => {
         fetchTransactions();
     }, []);
 
-    // Aplicar todos los filtros (fecha, alias, tipo)
-    const applyFilters = (date, alias, type) => {
+    const applyFilters = (range, alias, type) => {
         let filtered = [...transactions];
 
-        if (date) {
-            const selectedStr = date.format('YYYY-MM-DD');
+        if (range && range.length === 2) {
+            const [start, end] = range;
             filtered = filtered.filter((tx) => {
-                const txDate = dayjs.unix(tx.createdAt).format('YYYY-MM-DD');
-                return txDate === selectedStr;
+                const txDate = dayjs.unix(tx.createdAt);
+                return txDate.isAfter(start.startOf('day').subtract(1, 'second')) &&
+                    txDate.isBefore(end.endOf('day').add(1, 'second'));
             });
         }
 
@@ -83,24 +84,24 @@ const Historial = () => {
         setFilteredTransactions(filtered);
     };
 
-    const handleDateChange = (date) => {
-        setSelectedDate(date);
-        applyFilters(date, aliasFilter, transactionType);
+    const handleDateChange = (range) => {
+        setDateRange(range);
+        applyFilters(range, aliasFilter, transactionType);
     };
 
     const handleAliasChange = (e) => {
         const alias = e.target.value;
         setAliasFilter(alias);
-        applyFilters(selectedDate, alias, transactionType);
+        applyFilters(dateRange, alias, transactionType);
     };
 
     const handleTypeChange = (value) => {
         setTransactionType(value);
-        applyFilters(selectedDate, aliasFilter, value);
+        applyFilters(dateRange, aliasFilter, value);
     };
 
     const clearFilters = () => {
-        setSelectedDate(null);
+        setDateRange([]);
         setAliasFilter('');
         setTransactionType('todos');
         setFilteredTransactions(transactions);
@@ -111,40 +112,46 @@ const Historial = () => {
             <Button style={{ marginTop: 20 }} onClick={() => navigate(-1)}> ← Volver</Button>
             <h2>Historial Completo de Transferencias</h2>
             <p className='saludo'>Usuario: {name} ({username})</p>
-            
+
             <Space style={{ marginTop: 20 }} direction="vertical">
                 <small style={{ display: 'block', marginBottom: 4, color: '#555' }}>
-                    Filtrar por fecha:
-               </small>
-               <DatePicker onChange={handleDateChange} value={selectedDate} />
-               <small style={{ display: 'block', marginBottom: 4, color: '#555' }}>
-                Filtrar por alias:
+                    Filtrar por rango de fechas:
+                </small>
+                <RangePicker
+                    onChange={handleDateChange}
+                    value={dateRange}
+                    format="YYYY-MM-DD"
+                />
+
+                <small style={{ display: 'block', marginBottom: 4, color: '#555' }}>
+                    Filtrar por alias:
                 </small>
                 <Input
-                placeholder="Filtrar por alias (nombre o usuario)"
-                value={aliasFilter}
-                onChange={handleAliasChange}
-                allowClear
+                    placeholder="Filtrar por alias (nombre o usuario)"
+                    value={aliasFilter}
+                    onChange={handleAliasChange}
+                    allowClear
                 />
+
                 <div>
                     <small style={{ display: 'block', marginBottom: 4, color: '#555' }}>
                         Filtrar por categoría:
                     </small>
                     <Select
-                    value={transactionType}
-                    onChange={handleTypeChange}
-                    style={{ width: 200 }}
+                        value={transactionType}
+                        onChange={handleTypeChange}
+                        style={{ width: 200 }}
                     >
-                    <Option value="todos">Todos</Option>
-                    <Option value="sent">Enviados</Option>
-                    <Option value="received">Recibidos</Option>
+                        <Option value="todos">Todos</Option>
+                        <Option value="sent">Enviados</Option>
+                        <Option value="received">Recibidos</Option>
                     </Select>
-               </div>
-               <Button onClick={clearFilters}>
-                Limpiar filtros
-               </Button>
-           </Space>
+                </div>
 
+                <Button onClick={clearFilters}>
+                    Limpiar filtros
+                </Button>
+            </Space>
 
             {loading ? (
                 <p>Cargando transacciones...</p>
@@ -181,8 +188,6 @@ const Historial = () => {
                             </List.Item>
                         );
                     }}
-
-
                 />
             ) : (
                 <p>No hay transacciones para mostrar.</p>
