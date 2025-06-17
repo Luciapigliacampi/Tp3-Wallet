@@ -10,7 +10,8 @@ const Account = () => {
   const navigate = useNavigate();
   const { name, username } = location.state || {};
 
-  const { user, getAccessTokenSilently, isAuthenticated } = useAuth0(); // <-- Usa Auth0
+  const { user, getAccessTokenSilently, isAuthenticated, logout } = useAuth0(); // <-- Usa Auth0
+  console.log('Usuario autenticado:', user);
 
   const [transactions, setTransactions] = useState([]);
   const [totpToken, setTotpToken] = useState(sessionStorage.getItem('totpToken') || '');
@@ -107,13 +108,33 @@ const Account = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem('totpToken');
-    navigate('/');
+    logout({
+    returnTo: window.location.origin, // esto redirige a tu página de login o inicio
+  });
   };
 
   return (
     <div className="login-container">
-      <div className='icon-container'>
-        <p className='saludo'>Hola, {name}</p>
+      <div className="icon-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isAuthenticated && user?.picture && (
+            <img
+              src={user.picture}
+              alt="Foto de perfil"
+              style={{
+                width: '50px',
+                height: '50px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                objectFit: 'cover',
+                border: '2px solid #ddd'
+              }}
+              onClick={() => navigate('/profile')}
+              title="Ir al perfil"
+            />
+          )}
+          <p className='saludo'>Hola, {user?.name}</p>
+        </div>
         <LogoutOutlined className="logout-icon" onClick={handleLogout} />
       </div>
 
@@ -156,7 +177,7 @@ const Account = () => {
           ) : transactions.length > 0 ? (
             <List
               style={{ marginTop: 20 }}
-              header={<strong>Historial de Transacciones</strong>}
+              // header={<strong>Historial de Transacciones</strong>}
               bordered
               dataSource={transactions.slice(0, 3)} // <-- solo las primeras 3
               renderItem={(tx) => {

@@ -10,6 +10,7 @@ import Transfer from './pages/Transfer';
 import Historial from './pages/Historial';
 import Comprobante from './pages/Comprobante';
 import RecoverTotp from './pages/RecoverTotp';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/historial" element={<Historial />} />
             <Route path="/comprobante" element={<Comprobante />} />
             <Route path="/RecoverTotp" element={<RecoverTotp />} /> 
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </div>
       </Router>
