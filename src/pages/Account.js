@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, List, message, Input } from 'antd';
-import { LogoutOutlined } from '@ant-design/icons';
-import { useAuth0 } from '@auth0/auth0-react';  // <-- Importa Auth0
-import { DownloadOutlined } from '@ant-design/icons';
+import { LogoutOutlined, DownloadOutlined } from '@ant-design/icons';
+import { useAuth0 } from '@auth0/auth0-react';
+import axios from 'axios';
 
 const Account = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { name, username } = location.state || {};
+  const { user, getAccessTokenSilently, isAuthenticated, logout } = useAuth0();
 
-  const { user, getAccessTokenSilently, isAuthenticated, logout } = useAuth0(); // <-- Usa Auth0
-  console.log('Usuario autenticado:', user);
+  // Recupero alias y nombre desde sessionStorage o fallback desde Auth0 o location
+  const storedUsername = sessionStorage.getItem('username');
+  const storedName = sessionStorage.getItem('name');
+  const { name: navName, username: navUsername } = location.state || {};
+
+  const name = navName || storedName || user?.name;
+  const username = navUsername || storedUsername || user?.nickname || user?.email;
 
   const [transactions, setTransactions] = useState([]);
   const [totpToken, setTotpToken] = useState(sessionStorage.getItem('totpToken') || '');
@@ -20,10 +25,8 @@ const Account = () => {
   const [updatedBalance, setUpdatedBalance] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // NUEVA fetchTransactions con Auth0 y Bearer Token
   const fetchTransactions = async () => {
     if (!user?.email) return;
-
     setLoading(true);
 
     try {
@@ -42,12 +45,11 @@ const Account = () => {
 
       if (response.ok && data.success) {
         setTransactions(data.transactions);
-        setNeedsTotp(false); // asumo que con Auth0 no necesitas TOTP
-        sessionStorage.setItem('totpToken', ''); // limpio si estaba
+        setNeedsTotp(false);
+        sessionStorage.setItem('totpToken', '');
         setTotpToken('');
       } else if (response.status === 401 && data.needsRefresh) {
         message.error('Sesión expirada, por favor inicia sesión de nuevo.');
-        // podrías hacer logout o refresh aquí si quieres
       } else {
         message.error(data.message || 'Error al obtener transacciones');
       }
@@ -60,13 +62,13 @@ const Account = () => {
   };
 
   const fetchBalance = async () => {
-    if (!user?.email) return;  // Asegurarse que user.email exista
+    if (!user?.email) return;
 
     try {
       const res = await fetch('https://raulocoin.onrender.com/api/auth0/balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email }) // <-- envío email
+        body: JSON.stringify({ email: user.email })
       });
 
       const data = await res.json();
@@ -82,35 +84,49 @@ const Account = () => {
     }
   };
 
-
   useEffect(() => {
     if (isAuthenticated) {
       fetchTransactions();
-      fetchBalance();  // llamo sin parámetros
+      fetchBalance();
     }
   }, [isAuthenticated, user]);
 
-
-  // Mantengo el handler del TOTP y Logout igual para que funcione la parte de autenticación local
-  const handleTotpSubmit = () => {
+  const handleTotpSubmit = async () => {
     if (!inputTotp.trim()) {
       message.error('Ingresá el código TOTP');
       return;
     }
 
     const token = inputTotp.trim();
-    // Aquí podrías llamar a fetchTransactions con token, pero como ahora usamos Auth0, no lo haré
-    // Si quieres compatibilidad, podrías hacer:
-    // fetchTransactionsConTotp(token);
-    fetchBalance(token);
+
+    try {
+      const res = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
+        username: username, // <-- ahora confiable
+        totpToken: token,
+      });
+
+      if (res.data.success) {
+        sessionStorage.setItem('totpToken', token);
+        setTotpToken(token);
+        setNeedsTotp(false);
+        message.success("Verificación exitosa");
+
+        await fetchBalance();
+        await fetchTransactions();
+      } else {
+        message.error(res.data.message || "Código TOTP incorrecto");
+      }
+    } catch (err) {
+      message.error("Error al verificar código TOTP");
+      console.error(err);
+    }
+
     setInputTotp('');
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem('totpToken');
-    logout({
-    returnTo: window.location.origin, // esto redirige a tu página de login o inicio
-  });
+    logout({ returnTo: window.location.origin });
   };
 
   return (
@@ -133,7 +149,7 @@ const Account = () => {
               title="Ir al perfil"
             />
           )}
-          <p className='saludo'>Hola, {user?.name}</p>
+          <p className='saludo'>Hola, {name}</p>
         </div>
         <LogoutOutlined className="logout-icon" onClick={handleLogout} />
       </div>
@@ -177,9 +193,8 @@ const Account = () => {
           ) : transactions.length > 0 ? (
             <List
               style={{ marginTop: 20 }}
-              // header={<strong>Historial de Transacciones</strong>}
               bordered
-              dataSource={transactions.slice(0, 3)} // <-- solo las primeras 3
+              dataSource={transactions.slice(0, 3)}
               renderItem={(tx) => {
                 const isSent = tx.type === 'sent';
                 const counterpart = isSent

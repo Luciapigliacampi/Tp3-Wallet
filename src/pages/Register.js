@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input } from 'antd';
+import { Button, Input, message } from 'antd';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,7 @@ const Register = () => {
         if (res.success) {
           navigate('/totp', { state: res.totpSetup });
         } else {
+          message.error(res.message || 'Error al registrarse');
         }
       })
       .catch((error) => {

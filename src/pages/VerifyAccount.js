@@ -5,7 +5,11 @@ import { Input, Button } from 'antd';
 
 const VerifyAccount = () => {
   const location = useLocation();
-  const [alias, setAlias] = useState(location.state?.alias || '');
+  const username = location.state?.username || location.state?.alias || '';
+  const qrData = location.state?.qrData;
+  const isNewUser = location.state?.isNewUser === true;
+
+  const [alias, setAlias] = useState(username);
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -31,7 +35,6 @@ const VerifyAccount = () => {
         sessionStorage.setItem('balance', user.balance);
         sessionStorage.setItem('token', res.token);
 
-        // Redirigir a cuenta
         navigate('/account', {
           state: {
             name: user.name,
@@ -50,11 +53,39 @@ const VerifyAccount = () => {
     }
   };
 
+  const handleGoBack = () => {
+  // Limpia sessionStorage si querés
+  sessionStorage.clear();
+
+  // Redirige forzado al login
+  window.location.href = '/';
+};
+
   return (
     <div className="login-container">
       <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
       <h1 className="auth-title">Verifica tu cuenta</h1>
+
+      {isNewUser && (
+        <>
+          <p className="saludo">
+            ¡Bienvenida! Tu alias generado es: <strong>{username}</strong><br />
+            Guardalo porque lo necesitarás para transferencias y validaciones.
+          </p>
+
+          {qrData && (
+            <div style={{ marginTop: 20 }}>
+              <p>Escaneá este código QR con Google Authenticator o ingresá el código manual:</p>
+              <img src={qrData.qrCodeUrl} alt="QR TOTP" style={{ maxWidth: 200 }} />
+              <p>Código manual: <strong>{qrData.manualSetupCode}</strong></p>
+              <p>{qrData.instructions}</p>
+            </div>
+          )}
+        </>
+      )}
+
       <p className="auth-subtitle">¡Es necesario verificar para continuar!</p>
+
       <form onSubmit={handleSubmit}>
         <Input
           type="text"
@@ -63,7 +94,7 @@ const VerifyAccount = () => {
           onChange={(e) => setAlias(e.target.value)}
           required
           className="auth-input"
-          disabled={!!location.state?.alias}
+          disabled
         />
 
         <Input
@@ -79,7 +110,6 @@ const VerifyAccount = () => {
           {loading ? 'Cargando...' : 'Verificar'}
         </Button>
 
-                {/* Botón para recuperar TOTP */}
         <div style={{ textAlign: 'center', marginTop: '1rem' }}>
           <Link to="/RecoverTotp">
             <Button type="default">Recuperar TOTP</Button>
@@ -87,10 +117,10 @@ const VerifyAccount = () => {
         </div>
 
         <p className="auth-p-end">
-          <Link className="auth-link" to="/">Volver</Link>
+          <Button type="link" className="auth-link" onClick={handleGoBack}>
+            Volver
+          </Button>
         </p>
-
-
       </form>
     </div>
   );
