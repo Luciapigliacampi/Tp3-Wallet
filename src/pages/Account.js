@@ -20,10 +20,11 @@ const Account = () => {
 
   const [transactions, setTransactions] = useState([]);
   const [totpToken, setTotpToken] = useState(sessionStorage.getItem('totpToken') || '');
-  const [needsTotp, setNeedsTotp] = useState(!sessionStorage.getItem('totpToken'));
+  const [needsTotp, setNeedsTotp] = useState(false); // ← No asumir nada hasta que esté todo listo
   const [inputTotp, setInputTotp] = useState('');
   const [updatedBalance, setUpdatedBalance] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
 
   const fetchTransactions = async () => {
     if (!user?.email) return;
@@ -44,7 +45,10 @@ const Account = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setTransactions(data.transactions);
+        const filtered = data.transactions.filter(
+          (tx) => !tx.description?.toLowerCase().includes('perfil')
+        );
+        setTransactions(filtered);
         setNeedsTotp(false);
         sessionStorage.setItem('totpToken', '');
         setTotpToken('');
@@ -84,12 +88,94 @@ const Account = () => {
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchTransactions();
-      fetchBalance();
+  const fetchUserProfile = async () => { 
+  try {
+    const res = await axios.post('https://raulocoin.onrender.com/api/auth0/balance', {
+      email: user.email,
+    });
+
+    const { user: userData } = res.data;
+
+    if (userData) {
+      setUpdatedBalance(userData.balance);
+      sessionStorage.setItem('username', userData.username);
+      sessionStorage.setItem('name', userData.name);
     }
-  }, [isAuthenticated, user]);
+  } catch (err) {
+    console.error('Error al refrescar datos del perfil:', err);
+  }
+};
+
+
+  useEffect(() => { 
+  const initialize = async () => {
+    if (!isAuthenticated || !user) return;
+
+    const storedToken = sessionStorage.getItem('totpToken');
+
+    if (storedToken) {
+      setTotpToken(storedToken);
+      setNeedsTotp(false);
+      await Promise.all([
+        fetchBalance(),
+        fetchTransactions()
+      ]);
+    } else {
+      try {
+        const accessToken = await getAccessTokenSilently();
+
+        const response = await axios.post('https://raulocoin.onrender.com/api/auth0/authenticate', {
+          auth0_payload: user,
+          auth0_tokens: {
+            access_token: accessToken,
+          }
+        });
+
+        if (response.data.success) {
+          const { needsTotpSetup, user: userData } = response.data;
+
+          if (needsTotpSetup) {
+            setNeedsTotp(true);
+          } else {
+            setNeedsTotp(false);
+            await Promise.all([
+              fetchBalance(),
+              fetchTransactions()
+            ]);
+          }
+        } else {
+          message.error(response.data.message || 'No se pudo verificar el estado de TOTP');
+          setNeedsTotp(true);
+        }
+      } catch (err) {
+        console.error('Error al consultar TOTP:', err);
+        message.error('Error al verificar estado de la cuenta');
+        setNeedsTotp(true);
+      }
+    }
+
+    setInitializing(false);
+  };
+
+  initialize();
+}, [isAuthenticated, user]);
+
+useEffect(() => { 
+  const refresh = async () => {
+    setInitializing(true); // fuerza el loader al volver (incluso desde el perfil)
+    await fetchUserProfile();
+    await fetchBalance();
+    await fetchTransactions();
+    setInitializing(false);
+  };
+
+  if (isAuthenticated && user?.email) {
+    refresh();
+  }
+}, [location.key]);
+
+
+
 
   const handleTotpSubmit = async () => {
     if (!inputTotp.trim()) {
@@ -128,6 +214,14 @@ const Account = () => {
     sessionStorage.removeItem('totpToken');
     logout({ returnTo: window.location.origin });
   };
+
+  if (initializing) {
+    return (
+      <div className="login-container" style={{ textAlign: 'center', paddingTop: '4rem' }}>
+        <h2>Cargando cuenta...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container">
@@ -172,68 +266,74 @@ const Account = () => {
         Transferir
       </Button>
 
-      {needsTotp ? (
-        <div style={{ marginTop: 30 }}>
-          <h3>Debes completar la verificación TOTP para acceder a los detalles del usuario</h3>
-          <Input
-            placeholder="Código TOTP"
-            value={inputTotp}
-            onChange={(e) => setInputTotp(e.target.value)}
-            style={{ width: 200, marginBottom: 10 }}
-          />
-          <br />
-          <Button type="primary" onClick={handleTotpSubmit}>Verificar</Button>
+     {needsTotp ? (
+        <div style={{ marginTop: 30, textAlign: 'center' }}>
+          <h3>Sesión expirada</h3>
+          <p>Tu sesión ha caducado. Por favor, inicia sesión nuevamente para continuar.</p>
+          <Button
+          type="primary"
+          onClick={() => {
+            sessionStorage.clear();
+            navigate('/');
+          }}
+          >
+            Ir al inicio
+          </Button>
         </div>
       ) : (
         <div className='history-container'>
           <h2>Historial de Transferencias</h2>
 
           {loading ? (
-            <p>Cargando transacciones...</p>
-          ) : transactions.length > 0 ? (
-            <List
-              style={{ marginTop: 20 }}
-              bordered
-              dataSource={transactions.slice(0, 3)}
-              renderItem={(tx) => {
-                const isSent = tx.type === 'sent';
-                const counterpart = isSent
-                  ? tx.toName || 'Desconocido'
-                  : tx.fromName || tx.awardedBy || 'Sistema';
+  <p>Cargando transacciones...</p>
+) : transactions.length > 0 ? (
+  <>
+    <Button
+      type="link"
+      style={{ marginBottom: 10 }}
+      onClick={() => navigate('/historial', { state: { transactions, name, username } })}
+    >
+      Ver todas las transferencias
+    </Button>
 
-                return (
-                  <List.Item style={{ position: 'relative', paddingTop: 30 }}>
-                    <Button
-                      type="text"
-                      icon={<DownloadOutlined style={{ fontSize: 20, color: 'black' }} />}
-                      onClick={() => navigate('/comprobante', { state: { tx } })}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        padding: '6px 12px',
-                      }}
-                    />
-                    <div style={{ width: '100%' }}>
-                      <p><strong>{isSent ? 'Enviado a' : 'Recibido de'}:</strong> {counterpart}</p>
-                      <p><strong>Monto:</strong> {tx.amount > 0 ? '+' : ''}{tx.amount}</p>
-                      <p><strong>Descripción:</strong> {tx.description}</p>
-                      <p><strong>Fecha:</strong> {new Date(tx.createdAt * 1000).toLocaleString()}</p>
-                    </div>
-                  </List.Item>
-                );
+    <List
+      style={{ marginTop: 0 }}
+      bordered
+      dataSource={transactions.slice(0, 3)}
+      renderItem={(tx) => {
+        const isSent = tx.type === 'sent';
+        const counterpart = isSent
+          ? tx.toName || 'Desconocido'
+          : tx.fromName || tx.awardedBy || 'Sistema';
+
+        return (
+          <List.Item style={{ position: 'relative', paddingTop: 30 }}>
+            <Button
+              type="text"
+              icon={<DownloadOutlined style={{ fontSize: 20, color: 'black' }} />}
+              onClick={() => navigate('/comprobante', { state: { tx } })}
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                padding: '6px 12px',
               }}
             />
-          ) : (
-            <p>No hay transacciones para mostrar.</p>
-          )}
-          <Button
-            type="link"
-            style={{ marginTop: 10 }}
-            onClick={() => navigate('/historial', { state: { transactions, name, username } })}
-          >
-            Ver todas las transferencias
-          </Button>
+            <div style={{ width: '100%' }}>
+              <p><strong>{isSent ? 'Enviado a' : 'Recibido de'}:</strong> {counterpart}</p>
+              <p><strong>Monto:</strong> {tx.amount > 0 ? '+' : ''}{tx.amount}</p>
+              <p><strong>Descripción:</strong> {tx.description}</p>
+              <p><strong>Fecha:</strong> {new Date(tx.createdAt * 1000).toLocaleString()}</p>
+            </div>
+          </List.Item>
+        );
+      }}
+    />
+  </>
+) : (
+  <p>No hay transacciones para mostrar.</p>
+)}
+
         </div>
       )}
     </div>

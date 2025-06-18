@@ -40,8 +40,11 @@ const Historial = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                setTransactions(data.transactions);
-                setFilteredTransactions(data.transactions); // inicial
+                const sinEdiciones = data.transactions.filter(
+                    (tx) => !tx.description?.toLowerCase().includes('perfil')
+                );
+                setTransactions(sinEdiciones);
+                setFilteredTransactions(sinEdiciones);
             } else {
                 message.error(data.message || 'Error al obtener transacciones');
             }
