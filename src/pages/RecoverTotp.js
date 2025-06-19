@@ -1,94 +1,78 @@
 import React, { useState } from 'react';
-import { Input, Button, Form, Typography, message, Alert } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { Input, Button, message } from 'antd';
 import axios from 'axios';
 
-const { Title, Paragraph } = Typography;
-
 const RecoverTotp = () => {
+  const [email, setEmail] = useState('');
+  const [appName, setAppName] = useState('RauloCoins');
+  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
-  const [totpData, setTotpData] = useState(null);
-  const navigate = useNavigate();
 
-  const handleVolver = () => {
-    navigate('/');
-  };
+  const handleGenerate = async () => {
+    if (!email || !appName) {
+      message.warning('Por favor completa todos los campos');
+      return;
+    }
 
-  const onFinish = async (values) => {
     setLoading(true);
-    setTotpData(null);
-
     try {
-      const response = await axios.post('https://raulocoin.onrender.com/api/regenerate-totp', {
-        username: values.alias,
-        email: values.email,
-      });
+      const response = await axios.get(
+        `https://raulocoin.onrender.com/api/generate-totp?email=${email}&appName=${appName}`
+      );
 
-      const res = response.data;
-
-      if (res.success) {
-        message.success(res.message);
-        setTotpData(res.totpSetup);
+      if (response.data && response.data.token) {
+        setToken(response.data.token);
+        message.success('Código generado con éxito');
       } else {
-        message.error(res.message || 'No se pudo recuperar el TOTP');
+        message.error('No se pudo recuperar el código');
       }
     } catch (error) {
-      console.error('Error al recuperar TOTP:', error);
-      message.error('Error al contactar el servidor');
+      console.error(error);
+      message.error('Error al recuperar el TOTP');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-container" style={{ maxWidth: 450, margin: 'auto', paddingTop: '3rem' }}>
-      <Button onClick={handleVolver} style={{ marginBottom: '1rem' }}>
-        ← Volver
-      </Button>
+    <div className="container">
+      <div className="card">
+        <h1 className="auth-title">Recuperar TOTP</h1>
+        <p className="auth-subtitle">Ingresa tu correo para recuperar tu código</p>
 
-      <Title level={2} style={{ textAlign: 'center' }}>
-        Recuperar TOTP
-      </Title>
+        <input
+          className="auth-input"
+          type="email"
+          placeholder="Correo electrónico"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-      <Form layout="vertical" onFinish={onFinish}>
-        <Form.Item
-          label="Alias"
-          name="alias"
-          rules={[{ required: true, message: 'Por favor ingresa tu alias' }]}
+        <input
+          className="auth-input"
+          type="text"
+          placeholder="Nombre de la app (por defecto: RauloCoins)"
+          value={appName}
+          onChange={(e) => setAppName(e.target.value)}
+        />
+
+        <button
+          className="auth-button"
+          onClick={handleGenerate}
+          disabled={loading}
         >
-          <Input placeholder="Tu alias" />
-        </Form.Item>
+          {loading ? 'Cargando...' : 'Recuperar código'}
+        </button>
 
-        <Form.Item
-          label="Correo electrónico"
-          name="email"
-          rules={[{ required: true, message: 'Por favor ingresa tu correo' }]}
-        >
-          <Input type="email" placeholder="correo@ejemplo.com" />
-        </Form.Item>
-
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} block>
-            Recuperar
-          </Button>
-        </Form.Item>
-      </Form>
-
-      {totpData && (
-        <div style={{ marginTop: 30, textAlign: 'center' }}>
-          <Alert
-            message="Nueva configuración TOTP"
-            description="Usá esta información para configurar tu autenticador nuevamente."
-            type="success"
-            showIcon
-          />
-          <img src={totpData.qrCodeUrl} alt="QR Code" className="qr-img" style={{ marginTop: 20 }} />
-          <Paragraph copyable style={{ marginTop: 20 }}>
-            <strong>Código manual:</strong> {totpData.manualSetupCode}
-          </Paragraph>
-          <Paragraph>{totpData.instructions}</Paragraph>
-        </div>
-      )}
+        {token && (
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <p className="auth-code" onClick={() => navigator.clipboard.writeText(token)}>
+              {token}
+            </p>
+            <small style={{ fontSize: 13 }}>Haz clic para copiar</small>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

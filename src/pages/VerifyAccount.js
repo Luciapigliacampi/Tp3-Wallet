@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Input, Button } from 'antd';
 
 const VerifyAccount = () => {
   const location = useLocation();
@@ -59,71 +58,68 @@ const VerifyAccount = () => {
   };
 
   return (
-    <div className="login-container">
-      <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
-      <h1 className="auth-title">Verifica tu cuenta</h1>
+    <div className="container">
+      <div className="card">
+        <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
+        <h1 className="auth-title">Verifica tu cuenta</h1>
 
-      {isNewUser && (
-        <>
-          <p className="saludo">
-            ¡Bienvenida! Tu alias generado es: <strong>{username}</strong>
-            <br />Guardalo porque lo necesitarás para transferencias y validaciones.
+        {isNewUser && (
+          <>
+            <p className="auth-subtitle">
+              Tu alias generado es: <strong>{username}</strong>
+              <br /> Guardalo para futuras transferencias.
+            </p>
+
+            {qrData && (
+              <>
+                <p className="auth-subtitle">Escaneá este código QR o ingresá el código manual:</p>
+                <img src={qrData.qrCodeUrl} alt="QR TOTP" className="qr-img" />
+                <p className="auth-code">{qrData.manualSetupCode}</p>
+                <p className="auth-subtitle">{qrData.instructions}</p>
+              </>
+            )}
+          </>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Alias"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            required
+            className="auth-input"
+            disabled
+          />
+
+          <input
+            type="text"
+            placeholder="Código TOTP"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            required
+            className="auth-input"
+          />
+
+          <button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? 'Verificando...' : 'Verificar'}
+          </button>
+
+          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <Link to="/RecoverTotp" className="auth-link">Recuperar TOTP</Link>
+          </div>
+
+          <p className="auth-p-end">
+            <button onClick={handleGoBack} className="auth-link" type="button">
+              Volver
+            </button>
           </p>
-
-          {qrData && (
-            <div style={{ marginTop: 20 }}>
-              <p>Escaneá este código QR con Google Authenticator o ingresá el código manual:</p>
-              <img src={qrData.qrCodeUrl} alt="QR TOTP" className="qr-img" />
-              <p>Código manual: <strong>{qrData.manualSetupCode}</strong></p>
-              <p>{qrData.instructions}</p>
-            </div>
-          )}
-        </>
-      )}
-
-      <p className="auth-subtitle">¡Es necesario verificar para continuar!</p>
-
-      <form onSubmit={handleSubmit}>
-        <Input
-          type="text"
-          placeholder="Alias"
-          value={alias}
-          onChange={(e) => setAlias(e.target.value)}
-          required
-          className="auth-input"
-          disabled
-        />
-
-        <Input
-          type="text"
-          placeholder="Código TOTP"
-          value={codigo}
-          onChange={(e) => setCodigo(e.target.value)}
-          required
-          className="auth-input"
-        />
-
-        <Button
-          type="primary"
-          htmlType="submit"
-          className="auth-button"
-          disabled={loading}
-        >
-          {loading ? 'Cargando...' : 'Verificar'}
-        </Button>
-
-        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-          <Link to="/RecoverTotp">
-            <Button type="default">Recuperar TOTP</Button>
-          </Link>
-        </div>
-
-        <p className="auth-p-end">
-          <Button type="link" className="auth-link" onClick={handleGoBack}>
-            Volver
-          </Button>
-        </p>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };
