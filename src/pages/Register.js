@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, message } from 'antd';
+import { Input, Button, message } from 'antd';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -38,52 +38,53 @@ const Register = () => {
   };
 
   return (
-    <div className="login-container">
-      <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
-      <h1 className="auth-title">Regístrate</h1>
-      <p className="auth-subtitle">¡Empecemos esta aventura juntos!</p>
+    <div className="container">
+      <div className="card">
+        <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
+        <h1 className="auth-title">Regístrate</h1>
+        <p className="auth-subtitle">¡Empecemos esta aventura juntos!</p>
 
-      <form onSubmit={handleSubmit}>
-        <Input
-          type="text"
-          placeholder="Nombre"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          required
-          className="auth-input"
-        />
-        <Input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="auth-input"
-        />
-        <Input
-          type="text"
-          placeholder="Alias"
-          value={alias}
-          onChange={(e) => setAlias(e.target.value)}
-          required
-          className="auth-input"
-        />
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            required
+            className="auth-input"
+          />
+          <input
+            type="email"
+            placeholder="Correo electrónico"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="auth-input"
+          />
+          <input
+            type="text"
+            placeholder="Alias"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            required
+            className="auth-input"
+          />
 
-        <Button
-          type="primary"
-          htmlType="submit"
-          className="auth-button"
-          disabled={loading}
-        >
-          {loading ? 'Cargando...' : 'Registrarme'}
-        </Button>
+          <button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? 'Cargando...' : 'Registrarme'}
+          </button>
 
-        <p className="auth-p-end">
-          <Link className="auth-link" to="/">
-            Iniciar sesión
-          </Link>
-        </p>
-      </form>
+          <p className="auth-p-end">
+            <Link className="auth-link" to="/">
+              Iniciar sesión
+            </Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 };

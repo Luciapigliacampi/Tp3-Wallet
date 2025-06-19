@@ -1,148 +1,91 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { Input, Button, message } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined, EditOutlined } from '@ant-design/icons';
 
 const Profile = () => {
-  const { user, isAuthenticated } = useAuth0();
-  const navigate = useNavigate();
-
-  const [profileData, setProfileData] = useState({
-    name: '',
-    username: '',
-    email: '',
-  });
-
-  const [editMode, setEditMode] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [alias, setAlias] = useState('');
+  const [email, setEmail] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [originalName, setOriginalName] = useState('');
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await axios.post('https://raulocoin.onrender.com/api/auth0/balance', {
-          email: user.email,
-        });
-
-        const { user: userData } = res.data;
-
-        setProfileData({
-          name: userData.name || '',
-          username: userData.username || '',
-          email: userData.email || '',
-        });
-      } catch (err) {
-        console.error('Error al obtener perfil:', err);
-        message.error(err?.response?.data?.message || 'No se pudo cargar el perfil');
-      }
-    };
-
-    if (isAuthenticated && user?.email) {
-      fetchProfile();
+    const username = sessionStorage.getItem('username');
+    if (username) {
+      axios.get(`https://raulocoin.onrender.com/api/auth0/balance?username=${username}`)
+        .then((res) => {
+          const user = res.data.user;
+          setName(user.name);
+          setAlias(user.username);
+          setEmail(user.email);
+          setOriginalName(user.name);
+        })
+        .catch((err) => console.error('Error al obtener perfil:', err));
     }
-  }, [isAuthenticated, user]);
+  }, []);
 
   const handleSave = async () => {
-    const { name, username, email } = profileData;
-
-    if (name.length > 100) {
-      return message.error('El nombre no puede superar los 100 caracteres');
-    }
-
-    if (!/^[a-z0-9._-]{3,30}$/.test(username)) {
-      return message.error(
-        'El alias solo puede contener letras minúsculas, números, puntos, guiones y guiones bajos'
-      );
-    }
-
-    setLoading(true);
-
     try {
-      const res = await axios.post('https://raulocoin.onrender.com/api/auth0/edit-profile', {
-        email,
+      const response = await axios.post('https://raulocoin.onrender.com/api/auth0/edit-profile', {
+        username: alias,
         name,
-        username,
       });
 
-      if (res.data.success) {
-        message.success(res.data.message);
-        setEditMode(false);
+      if (response.data.success) {
+        alert('Nombre actualizado con éxito');
+        sessionStorage.setItem('name', name);
+        setOriginalName(name);
+        setEditing(false);
       } else {
-        message.error(res.data.message);
+        alert(response.data.message || 'No se pudo actualizar');
       }
-    } catch (err) {
-      message.error(err?.response?.data?.message || 'Error al actualizar el perfil');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error al actualizar perfil:', error);
+      alert('Error al actualizar el perfil');
     }
   };
 
+  const handleCancel = () => {
+    setName(originalName);
+    setEditing(false);
+  };
+
   return (
-    <div className="login-container">
-      <div className="icon-container" style={{ marginBottom: 20 }}>
-        <ArrowLeftOutlined
-          onClick={() => navigate('/account')}
-          className="logout-icon"
-        />
-        <p className="saludo">Perfil</p>
-        <div style={{ width: 22 }} /> {/* Espaciador para centrar el título */}
-      </div>
+    <div className="container">
+      <div className="card">
+        <h1 className="auth-title">Mi perfil</h1>
+        <p className="auth-subtitle">Visualizá y editá tus datos</p>
 
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <img
-          src={user?.picture}
-          alt="Perfil"
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            objectFit: 'cover',
-            border: '2px solid #ccc',
-          }}
-        />
-      </div>
-
-      <div className="user-container">
-        <label className="saludo">Nombre completo</label>
-        <Input
-          value={profileData.name}
-          disabled={!editMode}
-          onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-          style={{ marginBottom: 10 }}
+        <input
+          className="auth-input"
+          type="text"
+          value={alias}
+          disabled
         />
 
-        <label className="saludo">Alias</label>
-        <Input
-          value={profileData.username}
-          disabled={!editMode}
-          onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
-          style={{ marginBottom: 10 }}
+        <input
+          className="auth-input"
+          type="email"
+          value={email}
+          disabled
         />
 
-        <label className="saludo">Correo electrónico</label>
-        <Input value={profileData.email} disabled style={{ marginBottom: 20 }} />
+        <input
+          className="auth-input"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={!editing}
+        />
 
-        {editMode ? (
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={loading}
-            block
-            onClick={handleSave}
-            className="auth-button"
-          >
-            Guardar cambios
-          </Button>
+        {editing ? (
+          <>
+            <button className="auth-button" onClick={handleSave}>Guardar</button>
+            <button className="auth-button" onClick={handleCancel} style={{ marginTop: '10px' }}>
+              Cancelar
+            </button>
+          </>
         ) : (
-          <Button
-            icon={<EditOutlined />}
-            block
-            className="auth-button"
-            onClick={() => setEditMode(true)}
-          >
-            Editar perfil
-          </Button>
+          <button className="auth-button" onClick={() => setEditing(true)}>Editar nombre</button>
         )}
       </div>
     </div>

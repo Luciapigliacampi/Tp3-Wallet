@@ -1,72 +1,45 @@
-import React, { useEffect } from 'react';
-import { Button, message } from 'antd';
-import { useLocation, useNavigate } from 'react-router-dom';
-import jsPDF from 'jspdf';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Comprobante = () => {
-  const { state } = useLocation();
   const navigate = useNavigate();
-  const tx = state?.tx;
+  const lastTransfer = JSON.parse(sessionStorage.getItem('lastTransfer'));
 
-  useEffect(() => {
-    if (!tx) {
-      message.error('No hay datos para mostrar el comprobante');
-      navigate('/historial');
-    }
-  }, [tx, navigate]);
-
-  const generarPDF = () => {
-    if (!tx) return;
-
-    const doc = new jsPDF();
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('COMPROBANTE DE TRANSFERENCIA', 105, 20, null, null, 'center');
-    doc.line(20, 25, 190, 25);
-
-    doc.setFillColor(245, 245, 245);
-    doc.rect(20, 30, 170, 80, 'F');
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    let y = 40;
-
-    doc.text(`De: ${tx.fromName || tx.from?.name || 'Sistema'} (${tx.fromUsername || tx.from?.username || ''})`, 25, y);
-    y += 10;
-    doc.text(`Para: ${tx.toName || tx.to?.name || 'Desconocido'} (${tx.toUsername || tx.to?.username || ''})`, 25, y);
-    y += 10;
-    doc.text(`Monto: ${tx.amount} Raulocoins`, 25, y);
-    y += 10;
-    doc.text(`Descripción: ${tx.description || '-'}`, 25, y);
-    y += 10;
-    doc.text(`Fecha: ${new Date((tx.timestamp || tx.createdAt) * 1000).toLocaleString()}`, 25, y);
-
-    doc.setFontSize(10);
-    doc.setTextColor(150);
-    doc.text('Gracias por usar Raulocoin', 105, 130, null, null, 'center');
-
-    doc.save('comprobante-transferencia.pdf');
+  const handleVolver = () => {
+    sessionStorage.removeItem('lastTransfer');
+    navigate('/account');
   };
+
+  if (!lastTransfer) {
+    return (
+      <div className="container">
+        <div className="card">
+          <h1 className="auth-title">Sin comprobante</h1>
+          <p className="auth-subtitle">No hay datos de una transferencia reciente.</p>
+          <button className="auth-button" onClick={handleVolver}>Volver</button>
+        </div>
+      </div>
+    );
+  }
+
+  const { fromUsername, toAlias, amount, timestamp, transactionId } = lastTransfer;
 
   return (
     <div className="container">
-      <Button onClick={() => navigate(-1)} style={{ marginBottom: 20 }}>
-        ← Volver
-      </Button>
-      <h2>Comprobante de Transferencia</h2>
-      {tx && (
-        <div className="card">
-          <p><strong>De:</strong> {tx.fromName || tx.from?.name} ({tx.fromUsername || tx.from?.username})</p>
-          <p><strong>Para:</strong> {tx.toName || tx.to?.name} ({tx.toUsername || tx.to?.username})</p>
-          <p><strong>Monto:</strong> {tx.amount} Raulocoins</p>
-          <p><strong>Descripción:</strong> {tx.description}</p>
-          <p><strong>Fecha:</strong> {new Date((tx.timestamp || tx.createdAt) * 1000).toLocaleString()}</p>
+      <div className="card">
+        <h1 className="auth-title">Comprobante</h1>
+        <p className="auth-subtitle">Tu transferencia fue realizada con éxito</p>
 
-          <Button type="primary" onClick={generarPDF} style={{ marginTop: 10 }}>
-            Descargar comprobante
-          </Button>
+        <div style={{ marginBottom: '15px' }}>
+          <p><strong>De:</strong> {fromUsername}</p>
+          <p><strong>Para:</strong> {toAlias}</p>
+          <p><strong>Monto:</strong> ${parseFloat(amount).toFixed(2)}</p>
+          <p><strong>Fecha:</strong> {new Date(timestamp).toLocaleString()}</p>
+          <p><strong>ID de transacción:</strong> {transactionId}</p>
         </div>
-      )}
+
+        <button className="auth-button" onClick={handleVolver}>Volver al inicio</button>
+      </div>
     </div>
   );
 };

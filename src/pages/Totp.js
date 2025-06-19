@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Button, message } from 'antd';
+import { message } from 'antd';
 
 const Totp = () => {
   const location = useLocation();
@@ -14,37 +14,38 @@ const Totp = () => {
   }
 
   return (
-    <div className="login-container">
-      <img
-        src="/assets/raulCoin.png"
-        alt="raulCoin"
-        className="logo-img"
-      />
-      <h1 className="auth-title">Autenticación</h1>
-      <p className="auth-subtitle">Escaneá este código QR con tu app de autenticación</p>
+    <div className="container">
+      <div className="card">
+        <img
+          src="/assets/raulCoin.png"
+          alt="raulCoin"
+          className="logo-img"
+        />
 
-      <img
-        className="qr-img"
-        src={totpSetup.qrCodeUrl}
-        alt="Código QR TOTP"
-        style={{ maxWidth: 300 }}
-      />
+        <h1 className="auth-title">Autenticación</h1>
+        <p className="auth-subtitle">Escaneá este código QR con tu app de autenticación</p>
 
-      <p
-        className="auth-code"
-        onClick={() => navigator.clipboard.writeText(totpSetup.manualSetupCode)}
-        title="Haz clic para copiar"
-      >
-        {totpSetup.manualSetupCode}
-      </p>
+        <img
+          className="qr-img"
+          src={totpSetup.qrCodeUrl}
+          alt="Código QR TOTP"
+        />
 
-      <Button
-        type="primary"
-        className="auth-button"
-        onClick={() => navigate('/')}
-      >
-        Ingresar
-      </Button>
+        <p
+          className="auth-code"
+          onClick={() => navigator.clipboard.writeText(totpSetup.manualSetupCode)}
+          title="Haz clic para copiar"
+        >
+          {totpSetup.manualSetupCode}
+        </p>
+
+        <button
+          className="auth-button"
+          onClick={() => navigate('/')}
+        >
+          Ingresar
+        </button>
+      </div>
     </div>
   );
 };

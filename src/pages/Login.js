@@ -1,109 +1,90 @@
-import React, { useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
-import { Button, Spin } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Input, Button, message } from 'antd';
 import axios from 'axios';
 
 const Login = () => {
-  const {
-    loginWithRedirect,
-    user,
-    isAuthenticated,
-    isLoading,
-    getIdTokenClaims,
-    getAccessTokenSilently,
-  } = useAuth0();
-
+  const [alias, setAlias] = useState('');
+  const [codigo, setCodigo] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const autenticarConBackend = async () => {
-      try {
-        const idToken = await getIdTokenClaims();
-        const accessToken = await getAccessTokenSilently();
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-        const payload = {
-          auth0_payload: idToken.__raw
-            ? JSON.parse(atob(idToken.__raw.split('.')[1]))
-            : user,
-          auth0_tokens: {
-            id_token: idToken.__raw,
-            access_token: accessToken,
-            token_type: 'Bearer',
-            scope: 'openid profile email',
+    try {
+      const response = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
+        username: alias,
+        totpToken: codigo,
+      });
+
+      const res = response.data;
+
+      if (res.success) {
+        const user = res.user;
+
+        sessionStorage.setItem('username', user.username);
+        sessionStorage.setItem('name', user.name);
+        sessionStorage.setItem('balance', user.balance);
+        sessionStorage.setItem('token', res.token);
+
+        navigate('/account', {
+          state: {
+            name: user.name,
+            username: user.username,
+            balance: user.balance,
           },
-        };
-
-        const response = await axios.post(
-          'https://raulocoin.onrender.com/api/auth0/authenticate',
-          payload
-        );
-        const res = response.data;
-
-        if (res.success && res.user) {
-          sessionStorage.setItem('email', res.user.email);
-          sessionStorage.setItem('username', res.user.username);
-          sessionStorage.setItem('name', res.user.name);
-          sessionStorage.setItem('balance', res.user.balance);
-
-          if (res.needsTotpSetup) {
-            navigate('/verify-account', {
-              state: {
-                username: res.user.username,
-                qrData: res.totpSetup,
-                isNewUser: res.existingUser === false,
-              },
-            });
-          } else if (!res.user.totpVerified) {
-            navigate('/verify-account', {
-              state: {
-                alias: res.user.username,
-                isNewUser: false,
-              },
-            });
-          } else {
-            navigate('/account', {
-              state: {
-                name: res.user.name,
-                username: res.user.username,
-                balance: res.user.balance,
-              },
-            });
-          }
-        } else {
-          alert('No se pudo autenticar el usuario');
-        }
-      } catch (error) {
-        console.error('Error al autenticar con el backend:', error);
-        alert('Error al conectar con el servidor');
+        });
+      } else {
+        message.error(res.message || 'Código incorrecto');
       }
-    };
-
-    if (isAuthenticated && user) {
-      autenticarConBackend();
+    } catch (error) {
+      console.error(error);
+      message.error('Error al iniciar sesión');
+    } finally {
+      setLoading(false);
     }
-  }, [isAuthenticated, user, getIdTokenClaims, getAccessTokenSilently, navigate]);
-
-  if (isLoading) return <Spin tip="Cargando..." />;
+  };
 
   return (
-    <div className="login-container">
-      <img src="/assets/9coE.gif" alt="logo" className="logo-img" />
-      <h1 className="auth-title">Iniciar sesión</h1>
-      <p className="auth-subtitle">¡Bienvenido de nuevo, te hemos echado de menos!</p>
+    <div className="container">
+      <div className="card">
+        <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
+        <h1 className="auth-title">Iniciar sesión</h1>
+        <p className="auth-subtitle">Ingresá tu alias y el código TOTP</p>
 
-      <Button type="primary" className="auth-button" onClick={() => loginWithRedirect()}>
-        Iniciar sesión con Auth0
-      </Button>
+        <form onSubmit={handleLogin}>
+          <input
+            type="text"
+            placeholder="Alias"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            required
+            className="auth-input"
+          />
+          <input
+            type="text"
+            placeholder="Código TOTP"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            required
+            className="auth-input"
+          />
 
-      <Button
-        type="default"
-        className="auth-button"
-        style={{ marginTop: '1rem' }}
-        onClick={() => navigate('/RecoverTotp')}
-      >
-        Recuperar TOTP
-      </Button>
+          <button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading ? 'Ingresando...' : 'Ingresar'}
+          </button>
+
+          <p className="auth-p-end">
+            <Link to="/register" className="auth-link">¿No tenés cuenta? Registrate</Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 };
