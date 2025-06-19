@@ -69,7 +69,7 @@ const VerifyAccount = () => {
       {isNewUser && (
         <>
           <p className="saludo">
-            ¡Bienvenida! Tu alias generado es: <strong>{username}</strong><br />
+            ¡Bienvenido! Tu alias generado es: <strong>{username}</strong><br />
             Guardalo porque lo necesitarás para transferencias y validaciones.
           </p>
 
