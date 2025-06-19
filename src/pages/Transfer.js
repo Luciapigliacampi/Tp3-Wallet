@@ -1,130 +1,153 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { Input, Button, message, AutoComplete } from 'antd';
+import jsPDF from 'jspdf';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const Transfer = () => {
-  const location = useLocation();
+  const { state } = useLocation();
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
-  const fromUsername = sessionStorage.getItem('username');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [recipients, setRecipients] = useState([]);
-  const [selectedRecipient, setSelectedRecipient] = useState('');
+  const [toUsername, setToUsername] = useState('');
   const [amount, setAmount] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [token, setToken] = useState(null);
-  const [error, setError] = useState('');
+  const [description, setDescription] = useState('');
+  const [totpToken, setTotpToken] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [transferData, setTransferData] = useState(null);
 
-  useEffect(() => {
-    const searchUsers = async () => {
-      if (searchTerm.length < 2) return;
-      try {
-        const response = await axios.get(`https://raulocoin.onrender.com/api/search-users?q=${searchTerm}`);
-        setRecipients(response.data.filter(user => user.username !== fromUsername));
-      } catch (err) {
-        console.error('Error al buscar usuarios:', err);
-      }
-    };
-    searchUsers();
-  }, [searchTerm, fromUsername]);
+  const [options, setOptions] = useState([]);
+  const [searching, setSearching] = useState(false);
 
-  const handleTotpVerify = async () => {
+  const handleSearch = async (value) => {
+    setToUsername(value);
+    if (value.length < 3) {
+      setOptions([]);
+      return;
+    }
+
     try {
-      const res = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
-        username: fromUsername,
-        totpToken: totpCode,
+      setSearching(true);
+      const res = await fetch(`https://raulocoin.onrender.com/api/search-users?q=${value}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
-      setToken(res.data.operationToken);
-      return true;
-    } catch (err) {
-      setError('Código TOTP incorrecto');
-      return false;
+      const data = await res.json();
+
+      if (data.success && data.users.length > 0) {
+        setOptions(
+          data.users.map((user) => ({
+            label: `${user.name} (${user.username})`,
+            value: user.username,
+          }))
+        );
+      } else {
+        setOptions([]);
+      }
+    } catch (error) {
+      console.error(error);
+      setOptions([]);
+    } finally {
+      setSearching(false);
     }
   };
 
-  const handleTransfer = async (e) => {
-    e.preventDefault();
-    setError('');
+  const handleTransfer = async () => {
+    if (!toUsername || !amount || !totpToken) {
+      message.error('Completá todos los campos obligatorios');
+      return;
+    }
 
-    const isValid = await handleTotpVerify();
-    if (!isValid) return;
+    setLoading(true);
 
     try {
-      const response = await axios.post('https://raulocoin.onrender.com/api/transfer', {
-        fromUsername,
-        toUsername: selectedRecipient,
-        amount,
-        token,
-      });
-
-      const { fromUser, toUser, transaction } = response.data;
-
-      navigate('/comprobante', {
-        state: {
-          fromUser,
-          toUser,
-          transaction,
+      const res = await fetch('https://raulocoin.onrender.com/api/transfer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          toUsername,
+          amount,
+          description,
+          totpToken,
+        }),
       });
-    } catch (err) {
-      console.error('Error en la transferencia:', err);
-      setError('Error en la transferencia. Intentalo nuevamente.');
+
+      const data = await res.json();
+
+      if (data.success) {
+        message.success('Transferencia realizada correctamente');
+        setTransferData(data.transfer);
+        navigate('/comprobante', { state: { tx: data.transfer } });
+      } else {
+        message.error(data.message || 'Error al transferir');
+      }
+    } catch (error) {
+      console.error(error);
+      message.error('Error del servidor');
     }
+
+    setLoading(false);
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1 className="auth-title">Nueva Transferencia</h1>
-        <form onSubmit={handleTransfer}>
-          <input
-            className="auth-input"
-            placeholder="Buscar destinatario"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            required
-          />
-          {recipients.length > 0 && (
-            <select
-              className="auth-input"
-              value={selectedRecipient}
-              onChange={(e) => setSelectedRecipient(e.target.value)}
-              required
-            >
-              <option value="">Seleccionar destinatario</option>
-              {recipients.map((r) => (
-                <option key={r.username} value={r.username}>
-                  {r.username}
-                </option>
-              ))}
-            </select>
-          )}
+    <div className="card">
+      <h2 className="title">Nueva Transferencia</h2>
 
-          <input
-            className="auth-input"
-            type="number"
-            placeholder="Monto"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-          />
+      <label>Destinatario:</label>
+      <AutoComplete
+        className="input"
+        options={options}
+        onSearch={handleSearch}
+        onChange={setToUsername}
+        value={toUsername}
+        placeholder="Buscar por alias"
+        disabled={searching}
+      />
 
-          <input
-            className="auth-input"
-            type="text"
-            placeholder="Código TOTP"
-            value={totpCode}
-            onChange={(e) => setTotpCode(e.target.value)}
-            required
-          />
+      <label>Monto:</label>
+      <Input
+        className="input"
+        type="number"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="Monto"
+      />
 
-          {error && <p className="auth-subtitle">{error}</p>}
+      <label>Descripción:</label>
+      <Input
+        className="input"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Motivo (opcional)"
+      />
 
-          <button type="submit" className="auth-button">
-            Transferir
-          </button>
-        </form>
-      </div>
+      <label>Código TOTP:</label>
+      <Input
+        className="input"
+        value={totpToken}
+        onChange={(e) => setTotpToken(e.target.value)}
+        placeholder="Código de autenticación"
+      />
+
+      <Button
+        className="button"
+        type="primary"
+        loading={loading}
+        onClick={handleTransfer}
+      >
+        Enviar
+      </Button>
+
+      <Button
+        type="text"
+        className="link"
+        onClick={() => navigate('/account')}
+      >
+        Volver a cuenta
+      </Button>
     </div>
   );
 };

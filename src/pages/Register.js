@@ -1,76 +1,79 @@
 import React, { useState } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Input, Button, message } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 const Register = () => {
-  const { loginWithRedirect, user, isAuthenticated } = useAuth0();
-  const [codigo, setCodigo] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [alias, setAlias] = useState('');
+  const [email, setEmail] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const alias = user?.nickname || user?.email || '';
+  const handleRegister = async () => {
+    if (!alias || !email || !nombre) {
+      message.error('Por favor completá todos los campos');
+      return;
+    }
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
     setLoading(true);
 
     try {
       const response = await axios.post('https://raulocoin.onrender.com/api/register', {
-        email: user.email,
-        name: user.name,
+        username: alias,
+        email,
+        name: nombre,
       });
 
-      const { user: newUser, totpSetup } = response.data;
+      const res = response.data;
 
-      sessionStorage.setItem('username', newUser.username);
-      sessionStorage.setItem('name', newUser.name);
-      sessionStorage.setItem('balance', newUser.balance);
+      if (res.success) {
+        const user = res.user;
+        const totpSetup = res.totpSetup;
 
-      navigate('/verify-account', {
-        state: {
-          alias: newUser.username,
-          qrData: totpSetup,
-          isNewUser: true,
-        },
-      });
+        // Guardar datos en sessionStorage
+        sessionStorage.setItem('username', user.username);
+        sessionStorage.setItem('name', user.name);
+        sessionStorage.setItem('email', user.email);
+
+        navigate('/verify-account', {
+          state: {
+            username: user.username,
+            qrData: totpSetup,
+            isNewUser: true,
+          },
+        });
+      } else {
+        message.error(res.message || 'Error al registrar usuario');
+      }
     } catch (error) {
-      console.error('Error al registrar:', error);
-      alert('Error al registrarse');
-    } finally {
-      setLoading(false);
+      console.error('Error en registro:', error);
+      message.error('Error del servidor');
     }
+
+    setLoading(false);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h1 className="auth-title">Crear cuenta</h1>
-          <p className="auth-subtitle">Iniciá sesión para registrarte</p>
-          <button className="auth-button" onClick={() => loginWithRedirect()}>
-            Iniciar sesión con Auth0
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container">
-      <div className="card">
-        <h1 className="auth-title">¡Bienvenido!</h1>
-        <p className="auth-subtitle">Alias detectado: <strong>{alias}</strong></p>
-        <p className="auth-subtitle">Presioná continuar para generar tu clave TOTP</p>
+    <div className="card">
+      <h2 className="title">Registrarse</h2>
 
-        <form onSubmit={handleRegister}>
-          <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Cargando...' : 'Continuar'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
+      <Input
+        className="input"
+        placeholder="Alias"
+        value={alias}
+        onChange={(e) => setAlias(e.target.value)}
+      />
 
-export default Register;
+      <Input
+        className="input"
+        placeholder="Nombre completo"
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+      />
+
+      <Input
+        className="input"
+        placeholder="Email"
+        type="email"
+        value={email}

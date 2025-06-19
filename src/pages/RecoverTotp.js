@@ -1,61 +1,72 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { Input, Button, message } from 'antd';
 
 const RecoverTotp = () => {
-  const [alias, setAlias] = useState('');
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [dato, setDato] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleRecover = async (e) => {
-    e.preventDefault();
-    setError('');
-    setData(null);
+  const handleRecover = async () => {
+    if (!dato) {
+      message.error('Por favor ingresá tu alias o email');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const response = await axios.get(`https://raulocoin.onrender.com/api/recover-totp/${alias}`);
-      if (response.data.qrCode && response.data.manualCode) {
-        setData(response.data);
+      const response = await axios.post('https://raulocoin.onrender.com/api/recover-totp', {
+        aliasOrEmail: dato,
+      });
+
+      const res = response.data;
+
+      if (res.success) {
+        message.success('Código recuperado con éxito');
+
+        navigate('/verify-account', {
+          state: {
+            alias: res.user.username,
+            isNewUser: false,
+          },
+        });
       } else {
-        setError('No se pudo recuperar el TOTP.');
+        message.error(res.message || 'No se pudo recuperar el código');
       }
-    } catch (err) {
-      console.error('Error al recuperar TOTP:', err);
-      setError('Alias no encontrado o error del servidor');
+    } catch (error) {
+      console.error('Error al recuperar TOTP:', error);
+      message.error('Error del servidor');
     }
+
+    setLoading(false);
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1 className="auth-title">Recuperar TOTP</h1>
-        <p className="auth-subtitle">Ingresá tu alias para recuperar tu clave TOTP</p>
+    <div className="card">
+      <h2 className="title">Recuperar TOTP</h2>
 
-        <form onSubmit={handleRecover}>
-          <input
-            type="text"
-            placeholder="Alias"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            className="auth-input"
-            required
-          />
-          <button type="submit" className="auth-button">Recuperar</button>
-        </form>
+      <p>Ingresá tu alias o correo electrónico para recuperar tu autenticación:</p>
+      <Input
+        className="input"
+        placeholder="Alias o Email"
+        value={dato}
+        onChange={(e) => setDato(e.target.value)}
+      />
 
-        {error && <p className="auth-subtitle">{error}</p>}
+      <Button
+        className="button"
+        onClick={handleRecover}
+        loading={loading}
+        block
+      >
+        Recuperar código
+      </Button>
 
-        {data && (
-          <>
-            <img src={data.qrCode} alt="QR" className="qr-img" />
-            <p className="auth-code">{data.manualCode}</p>
-            <button className="auth-button" onClick={() => navigate('/')}>
-              Volver al inicio
-            </button>
-          </>
-        )}
-      </div>
+      <a href="/" className="link">
+        Volver al inicio
+      </a>
     </div>
   );
 };
