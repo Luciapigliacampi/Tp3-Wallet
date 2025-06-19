@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { List, Button, message, DatePicker, Input, Space, Select } from 'antd';
 import { useAuth0 } from '@auth0/auth0-react';
 import dayjs from 'dayjs';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined,  ArrowLeftOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -112,20 +112,17 @@ const Historial = () => {
 
   return (
     <div className='login-container'>
-      <Button
-        type="primary"
-        className="auth-button"
-        onClick={() => navigate(-1)}
-        style={{ width: 'auto', padding: '0 16px', marginBottom: 10 }}
-      >
-        ← Volver
-      </Button>
+      <ArrowLeftOutlined
+  onClick={() => navigate(-1)}
+  style={{ fontSize: 20, cursor: 'pointer', color: '#EFCD72', marginBottom: 10 }}
+  title="Volver"
+/>
 
-      <h2 className="auth-title">Historial Completo de Transferencias</h2>
+      <h2 className="auth-title historial-transferencias">Historial de Transferencias</h2>
       <p className="saludo">Usuario: {name} ({username})</p>
 
-      <div className="user-container" style={{ marginTop: 20 }}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <div className="filters-compact">
+  <Space direction="vertical" size="small" style={{ width: '100%' }}>
           <div>
             <small style={{ color: '#494949' }}>Filtrar por rango de fechas:</small>
             <RangePicker
@@ -170,7 +167,7 @@ const Historial = () => {
         </Space>
       </div>
 
-      <div className="history-container">
+      <div className="history-container scrollable-container">
         {loading ? (
           <p>Cargando transacciones...</p>
         ) : filteredTransactions.length > 0 ? (

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Input, Button, message, AutoComplete } from 'antd';
 import jsPDF from 'jspdf';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 
 const Transfer = () => {
   const { state } = useLocation();
@@ -148,20 +149,16 @@ const Transfer = () => {
 
   return (
     <div className="login-container">
-      <Button
-        type="primary"
-        className="auth-button"
+      <ArrowLeftOutlined
         onClick={() => navigate(-1)}
-        style={{ width: 'auto', padding: '0 16px', marginBottom: 20 }}
-      >
-        ← Volver
-      </Button>
+        style={{ fontSize: 20, cursor: 'pointer', color: '#EFCD72', marginBottom: 10 }}
+        title="Volver"
+      />
 
       <h2 className="auth-title">Transferir Raulocoins</h2>
 
       <AutoComplete
-        className="auth-input"
-        style={{ width: '100%' }}
+        style={{ marginBottom: 20, width: '100%' }}
         options={options}
         value={toUsername}
         onSearch={handleSearch}
@@ -205,7 +202,7 @@ const Transfer = () => {
       </Button>
 
       {transferData && (
-        <div className="user-container" style={{ marginTop: 30 }}>
+        <div className="user-container scrollable-container" style={{ marginTop: 30 }}>
           <h3 className="saludo">✅ Comprobante de Transferencia</h3>
           <p className="saludo"><strong>De:</strong> {transferData.from.name} ({transferData.from.username})</p>
           <p className="saludo"><strong>Para:</strong> {transferData.to.name} ({transferData.to.username})</p>

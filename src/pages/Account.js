@@ -281,7 +281,7 @@ useEffect(() => {
           </Button>
         </div>
       ) : (
-        <div className='history-container'>
+        <div className='history-container scrollable-container history-container-scrollabel'>
           <h2>Historial de Transferencias</h2>
 
           {loading ? (
