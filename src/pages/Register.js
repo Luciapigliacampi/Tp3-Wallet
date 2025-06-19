@@ -77,3 +77,18 @@ const Register = () => {
         placeholder="Email"
         type="email"
         value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      <Button className="button" onClick={handleRegister} loading={loading}>
+        Registrarme
+      </Button>
+
+      <a href="/" className="link">
+        ¿Ya tenés cuenta? Iniciar sesión
+      </a>
+    </div>
+  );
+};
+
+export default Register;
