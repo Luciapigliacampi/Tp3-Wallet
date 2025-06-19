@@ -1,129 +1,129 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Transfer = () => {
+  const location = useLocation();
   const navigate = useNavigate();
 
   const fromUsername = sessionStorage.getItem('username');
-  const [toAlias, setToAlias] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [recipients, setRecipients] = useState([]);
+  const [selectedRecipient, setSelectedRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [codigo, setCodigo] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [token, setToken] = useState(null);
+  const [error, setError] = useState('');
 
-  const handleSearch = async () => {
-    if (!toAlias) return;
+  useEffect(() => {
+    const searchUsers = async () => {
+      if (searchTerm.length < 2) return;
+      try {
+        const response = await axios.get(`https://raulocoin.onrender.com/api/search-users?q=${searchTerm}`);
+        setRecipients(response.data.filter(user => user.username !== fromUsername));
+      } catch (err) {
+        console.error('Error al buscar usuarios:', err);
+      }
+    };
+    searchUsers();
+  }, [searchTerm, fromUsername]);
 
+  const handleTotpVerify = async () => {
     try {
-      const res = await axios.get(`https://raulocoin.onrender.com/api/search-users?alias=${toAlias}`);
-      setSearchResults(res.data.results || []);
+      const res = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
+        username: fromUsername,
+        totpToken: totpCode,
+      });
+      setToken(res.data.operationToken);
+      return true;
     } catch (err) {
-      console.error('Error al buscar usuarios:', err);
+      setError('Código TOTP incorrecto');
+      return false;
     }
   };
 
-  const handleTransfer = async () => {
-    if (!fromUsername || !amount || !codigo || !toAlias) {
-      alert('Todos los campos son obligatorios');
-      return;
-    }
+  const handleTransfer = async (e) => {
+    e.preventDefault();
+    setError('');
 
-    setLoading(true);
+    const isValid = await handleTotpVerify();
+    if (!isValid) return;
+
     try {
-      const verifyRes = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
-        username: fromUsername,
-        totpToken: codigo,
+      const response = await axios.post('https://raulocoin.onrender.com/api/transfer', {
+        fromUsername,
+        toUsername: selectedRecipient,
+        amount,
+        token,
       });
 
-      if (!verifyRes.data.success) {
-        alert('Código TOTP inválido');
-        setLoading(false);
-        return;
-      }
+      const { fromUser, toUser, transaction } = response.data;
 
-      const token = verifyRes.data.token;
-
-      const transferRes = await axios.post('https://raulocoin.onrender.com/api/transfer', {
-        fromUsername,
-        toAlias,
-        amount: parseFloat(amount),
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      navigate('/comprobante', {
+        state: {
+          fromUser,
+          toUser,
+          transaction,
         },
       });
-
-      const result = transferRes.data;
-
-      if (result.success) {
-        sessionStorage.setItem('lastTransfer', JSON.stringify(result));
-        navigate('/comprobante');
-      } else {
-        alert(result.message || 'Error al transferir');
-      }
     } catch (err) {
       console.error('Error en la transferencia:', err);
-      alert('Error en la transferencia');
-    } finally {
-      setLoading(false);
+      setError('Error en la transferencia. Intentalo nuevamente.');
     }
   };
 
   return (
     <div className="container">
       <div className="card">
-        <h1 className="auth-title">Transferencia</h1>
-
-        <input
-          type="text"
-          placeholder="Alias del destinatario"
-          value={toAlias}
-          onChange={(e) => setToAlias(e.target.value)}
-          className="auth-input"
-        />
-        <button onClick={handleSearch} className="auth-button" style={{ marginBottom: '15px' }}>
-          Buscar destinatario
-        </button>
-
-        {searchResults.length > 0 && (
-          <div className="user-container">
-            <strong>Resultado:</strong>
-            <ul>
-              {searchResults.map((user, index) => (
-                <li key={index}>{user.username} - {user.name}</li>
+        <h1 className="auth-title">Nueva Transferencia</h1>
+        <form onSubmit={handleTransfer}>
+          <input
+            className="auth-input"
+            placeholder="Buscar destinatario"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            required
+          />
+          {recipients.length > 0 && (
+            <select
+              className="auth-input"
+              value={selectedRecipient}
+              onChange={(e) => setSelectedRecipient(e.target.value)}
+              required
+            >
+              <option value="">Seleccionar destinatario</option>
+              {recipients.map((r) => (
+                <option key={r.username} value={r.username}>
+                  {r.username}
+                </option>
               ))}
-            </ul>
-          </div>
-        )}
+            </select>
+          )}
 
-        <input
-          type="number"
-          placeholder="Monto"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="auth-input"
-        />
+          <input
+            className="auth-input"
+            type="number"
+            placeholder="Monto"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+          />
 
-        <input
-          type="text"
-          placeholder="Código TOTP"
-          value={codigo}
-          onChange={(e) => setCodigo(e.target.value)}
-          className="auth-input"
-        />
+          <input
+            className="auth-input"
+            type="text"
+            placeholder="Código TOTP"
+            value={totpCode}
+            onChange={(e) => setTotpCode(e.target.value)}
+            required
+          />
 
-        <button
-          onClick={handleTransfer}
-          className="auth-button"
-          disabled={loading}
-        >
-          {loading ? 'Procesando...' : 'Transferir'}
-        </button>
+          {error && <p className="auth-subtitle">{error}</p>}
 
-        <p className="auth-p-end">
-          <button className="auth-link" onClick={() => navigate('/account')}>Volver</button>
-        </p>
+          <button type="submit" className="auth-button">
+            Transferir
+          </button>
+        </form>
       </div>
     </div>
   );
