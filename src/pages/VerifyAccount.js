@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Input, Button, message } from 'antd';
+import { Input, Button } from 'antd';
 
 const VerifyAccount = () => {
   const location = useLocation();
-  const [alias, setAlias] = useState(location.state?.alias || location.state?.username || '');
+  const username = location.state?.username || location.state?.alias || '';
+  const qrData = location.state?.qrData;
+  const isNewUser = location.state?.isNewUser === true;
+
+  const [alias, setAlias] = useState(username);
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  const { logout } = useAuth0();
-
-  const handleLogout = () => {
-    sessionStorage.clear();
-    logout({ returnTo: window.location.origin });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,69 +32,96 @@ const VerifyAccount = () => {
         // Guardar datos en sessionStorage
         sessionStorage.setItem('username', user.username);
         sessionStorage.setItem('name', user.name);
-        sessionStorage.setItem('email', user.email);
         sessionStorage.setItem('balance', user.balance);
+        sessionStorage.setItem('token', res.token);
 
         navigate('/account', {
           state: {
-            username: user.username,
             name: user.name,
+            username: user.username,
+            balance: user.balance,
           },
         });
       } else {
-        message.error(res.message || 'Código inválido');
+        alert(res.message || 'Código TOTP incorrecto.');
       }
     } catch (error) {
-      console.error('Error al verificar TOTP:', error);
-      message.error('Error del servidor');
+      console.error('Error al verificar el código TOTP:', error);
+      alert('Error al verificar el código TOTP.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
+  const handleGoBack = () => {
+  // Limpia sessionStorage si querés
+  sessionStorage.clear();
+
+  // Redirige forzado al login
+  window.location.href = '/';
+};
+
   return (
-    <div className="card">
-      <h2 className="title">Verificar Código</h2>
+    <div className="login-container">
+      <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
+      <h1 className="auth-title">Verifica tu cuenta</h1>
 
-      <p>Alias:</p>
-      <Input
-        className="input"
-        placeholder="Alias"
-        value={alias}
-        onChange={(e) => setAlias(e.target.value)}
-        disabled
-      />
+      {isNewUser && (
+        <>
+          <p className="saludo">
+            ¡Bienvenida! Tu alias generado es: <strong>{username}</strong><br />
+            Guardalo porque lo necesitarás para transferencias y validaciones.
+          </p>
 
-      <p>Ingresá tu código TOTP:</p>
-      <Input
-        className="input"
-        placeholder="Código TOTP"
-        value={codigo}
-        onChange={(e) => setCodigo(e.target.value)}
-      />
+          {qrData && (
+            <div style={{ marginTop: 20 }}>
+              <p>Escaneá este código QR con Google Authenticator o ingresá el código manual:</p>
+              <img src={qrData.qrCodeUrl} alt="QR TOTP" style={{ maxWidth: 200 }} />
+              <p>Código manual: <strong>{qrData.manualSetupCode}</strong></p>
+              <p>{qrData.instructions}</p>
+            </div>
+          )}
+        </>
+      )}
 
-      <Button
-        className="button"
-        type="primary"
-        onClick={handleSubmit}
-        loading={loading}
-        block
-      >
-        Verificar
-      </Button>
+      <p className="auth-subtitle">¡Es necesario verificar para continuar!</p>
 
-      <Button
-        danger
-        type="text"
-        style={{ marginTop: '1rem' }}
-        onClick={handleLogout}
-      >
-        Cerrar sesión
-      </Button>
+      <form onSubmit={handleSubmit}>
+        <Input
+          type="text"
+          placeholder="Alias"
+          value={alias}
+          onChange={(e) => setAlias(e.target.value)}
+          required
+          className="auth-input"
+          disabled
+        />
 
-      <Link to="/recover" className="link">
-        ¿Perdiste tu código?
-      </Link>
+        <Input
+          type="text"
+          placeholder="Código TOTP"
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value)}
+          required
+          className="auth-input"
+        />
+
+        <Button type="primary" htmlType="submit" className="auth-button" disabled={loading}>
+          {loading ? 'Cargando...' : 'Verificar'}
+        </Button>
+
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <Link to="/RecoverTotp">
+            <Button type="default">Recuperar TOTP</Button>
+          </Link>
+        </div>
+
+        <p className="auth-p-end">
+          <Button type="link" className="auth-link" onClick={handleGoBack}>
+            Volver
+          </Button>
+        </p>
+      </form>
     </div>
   );
 };

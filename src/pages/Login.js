@@ -51,44 +51,49 @@ const Login = () => {
               }
             });
           } else {
-            // Usuario con TOTP verificado correctamente
             navigate('/account', {
               state: {
+                name: res.user.name,
                 username: res.user.username,
-                name: res.user.name
-              }
+                balance: res.user.balance,
+              },
             });
           }
         } else {
-          console.error("Error en la autenticación");
+          alert("No se pudo autenticar el usuario");
         }
+
       } catch (error) {
-        console.error("Error en login Auth0:", error);
+        console.error('Error al autenticar con el backend:', error);
+        alert("Error al conectar con el servidor");
       }
     };
 
     if (isAuthenticated && user) {
       autenticarConBackend();
     }
-  }, [isAuthenticated, user, navigate, getAccessTokenSilently, getIdTokenClaims]);
+  }, [isAuthenticated, user, getIdTokenClaims, getAccessTokenSilently, navigate]);
 
-  if (isLoading) {
-    return (
-      <div className="card">
-        <Spin />
-      </div>
-    );
-  }
+  if (isLoading) return <Spin tip="Cargando..." />;
 
   return (
-    <div className="card">
-      <h2 className="title">Iniciar sesión</h2>
-      <Button className="button" onClick={() => loginWithRedirect()}>
+    <div className="login-container">
+      <img src="/assets/9coE.gif" alt="logo" className="logo-img" />
+      <h1 className="auth-title">Iniciar sesión</h1>
+      <p className="auth-subtitle">¡Bienvenido de nuevo, te hemos echado de menos!</p>
+
+      <Button type="primary" className="auth-button" onClick={() => loginWithRedirect()}>
         Iniciar sesión con Auth0
       </Button>
-      <a href="/recover" className="link">
-        ¿Perdiste tu código de TOTP?
-      </a>
+
+      <Button
+        type="default"
+        className="auth-button"
+        style={{ marginTop: '1rem' }}
+        onClick={() => navigate('/RecoverTotp')}
+      >
+        Recuperar TOTP
+      </Button>
     </div>
   );
 };
