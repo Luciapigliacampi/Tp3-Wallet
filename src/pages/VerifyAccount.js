@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 const VerifyAccount = () => {
   const location = useLocation();
+  const [alias, setAlias] = useState(location.state?.alias || '');
+  const [codigo, setCodigo] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { logout } = useAuth0();
 
-  const username = location.state?.username || location.state?.alias || '';
   const qrData = location.state?.qrData;
   const isNewUser = location.state?.isNewUser === true;
 
-  const [alias, setAlias] = useState(username);
-  const [codigo, setCodigo] = useState('');
-  const [loading, setLoading] = useState(false);
+  const handleLogout = () => {
+    sessionStorage.clear();
+    logout({ returnTo: window.location.origin });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,97 +33,60 @@ const VerifyAccount = () => {
 
       if (res.success) {
         const user = res.user;
-
         sessionStorage.setItem('username', user.username);
         sessionStorage.setItem('name', user.name);
         sessionStorage.setItem('balance', user.balance);
-        sessionStorage.setItem('token', res.token);
 
         navigate('/account', {
           state: {
-            name: user.name,
             username: user.username,
+            name: user.name,
             balance: user.balance,
           },
         });
       } else {
-        alert(res.message || 'Código TOTP incorrecto.');
+        alert(res.message || 'Código incorrecto');
       }
     } catch (error) {
-      console.error('Error al verificar el código TOTP:', error);
-      alert('Error al verificar el código TOTP.');
+      console.error('Error al verificar código:', error);
+      alert('Error al verificar el código');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoBack = () => {
-    sessionStorage.clear();
-    window.location.href = '/';
   };
 
   return (
     <div className="container">
       <div className="card">
         <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
-        <h1 className="auth-title">Verifica tu cuenta</h1>
+        <h1 className="auth-title">Verificá tu cuenta</h1>
+        <p className="auth-subtitle">Ingresá el código generado por tu app de autenticación</p>
 
-        {isNewUser && (
+        {qrData && isNewUser && (
           <>
-            <p className="auth-subtitle">
-              Tu alias generado es: <strong>{username}</strong>
-              <br /> Guardalo para futuras transferencias.
-            </p>
-
-            {qrData && (
-              <>
-                <p className="auth-subtitle">Escaneá este código QR o ingresá el código manual:</p>
-                <img src={qrData.qrCodeUrl} alt="QR TOTP" className="qr-img" />
-                <p className="auth-code">{qrData.manualSetupCode}</p>
-                <p className="auth-subtitle">{qrData.instructions}</p>
-              </>
-            )}
+            <p className="auth-subtitle">Escaneá este QR con tu app de autenticación:</p>
+            <img src={qrData.qrCode} alt="QR" className="qr-img" />
+            <p className="auth-code">{qrData.manualCode}</p>
           </>
         )}
 
         <form onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Alias"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            required
-            className="auth-input"
-            disabled
-          />
-
-          <input
-            type="text"
-            placeholder="Código TOTP"
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
-            required
+            placeholder="Código TOTP"
             className="auth-input"
+            required
           />
-
-          <button
-            type="submit"
-            className="auth-button"
-            disabled={loading}
-          >
+          <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Verificando...' : 'Verificar'}
           </button>
-
-          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-            <Link to="/RecoverTotp" className="auth-link">Recuperar TOTP</Link>
-          </div>
-
-          <p className="auth-p-end">
-            <button onClick={handleGoBack} className="auth-link" type="button">
-              Volver
-            </button>
-          </p>
         </form>
+
+        <p className="auth-p-end">
+          <button onClick={handleLogout} className="auth-link">Cerrar sesión</button>
+        </p>
       </div>
     </div>
   );

@@ -1,88 +1,72 @@
 import React, { useState } from 'react';
-import { Input, Button, message } from 'antd';
+import { useAuth0 } from '@auth0/auth0-react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
 
 const Register = () => {
-  const [email, setEmail] = useState('');
-  const [alias, setAlias] = useState('');
-  const [nombre, setNombre] = useState('');
+  const { loginWithRedirect, user, isAuthenticated } = useAuth0();
+  const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const alias = user?.nickname || user?.email || '';
+
+  const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const data = {
-      name: nombre,
-      username: alias,
-      email: email,
-    };
-
     try {
-      const response = await axios.post('https://raulocoin.onrender.com/api/register', data);
-      const res = response.data;
+      const response = await axios.post('https://raulocoin.onrender.com/api/register', {
+        email: user.email,
+        name: user.name,
+      });
 
-      if (res.success) {
-        navigate('/totp', { state: res.totpSetup });
-      } else {
-        message.error(res.message || 'Error al registrarse');
-      }
+      const { user: newUser, totpSetup } = response.data;
+
+      sessionStorage.setItem('username', newUser.username);
+      sessionStorage.setItem('name', newUser.name);
+      sessionStorage.setItem('balance', newUser.balance);
+
+      navigate('/verify-account', {
+        state: {
+          alias: newUser.username,
+          qrData: totpSetup,
+          isNewUser: true,
+        },
+      });
     } catch (error) {
-      console.error(error);
-      message.error('Ocurrió un error inesperado');
+      console.error('Error al registrar:', error);
+      alert('Error al registrarse');
     } finally {
       setLoading(false);
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="container">
+        <div className="card">
+          <h1 className="auth-title">Crear cuenta</h1>
+          <p className="auth-subtitle">Iniciá sesión para registrarte</p>
+          <button className="auth-button" onClick={() => loginWithRedirect()}>
+            Iniciar sesión con Auth0
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <div className="card">
-        <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
-        <h1 className="auth-title">Regístrate</h1>
-        <p className="auth-subtitle">¡Empecemos esta aventura juntos!</p>
+        <h1 className="auth-title">¡Bienvenido!</h1>
+        <p className="auth-subtitle">Alias detectado: <strong>{alias}</strong></p>
+        <p className="auth-subtitle">Presioná continuar para generar tu clave TOTP</p>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            required
-            className="auth-input"
-          />
-          <input
-            type="email"
-            placeholder="Correo electrónico"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="auth-input"
-          />
-          <input
-            type="text"
-            placeholder="Alias"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            required
-            className="auth-input"
-          />
-
-          <button
-            type="submit"
-            className="auth-button"
-            disabled={loading}
-          >
-            {loading ? 'Cargando...' : 'Registrarme'}
+        <form onSubmit={handleRegister}>
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Cargando...' : 'Continuar'}
           </button>
-
-          <p className="auth-p-end">
-            <Link className="auth-link" to="/">
-              Iniciar sesión
-            </Link>
-          </p>
         </form>
       </div>
     </div>

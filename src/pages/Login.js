@@ -1,89 +1,78 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Input, Button, message } from 'antd';
+import React, { useEffect } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Login = () => {
-  const [alias, setAlias] = useState('');
-  const [codigo, setCodigo] = useState('');
-  const [loading, setLoading] = useState(false);
+  const {
+    loginWithRedirect,
+    isAuthenticated,
+    user,
+    isLoading,
+  } = useAuth0();
+
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    const loginOrRegister = async () => {
+      if (!isAuthenticated || !user) return;
 
-    try {
-      const response = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
-        username: alias,
-        totpToken: codigo,
-      });
-
-      const res = response.data;
-
-      if (res.success) {
-        const user = res.user;
-
-        sessionStorage.setItem('username', user.username);
-        sessionStorage.setItem('name', user.name);
-        sessionStorage.setItem('balance', user.balance);
-        sessionStorage.setItem('token', res.token);
-
-        navigate('/account', {
-          state: {
-            name: user.name,
-            username: user.username,
-            balance: user.balance,
-          },
+      try {
+        // Paso 1: registrar o loguear al usuario en el backend
+        const res = await axios.post('https://raulocoin.onrender.com/api/register', {
+          email: user.email,
+          name: user.name,
         });
-      } else {
-        message.error(res.message || 'Código incorrecto');
+
+        const { user: backendUser, totpSetup } = res.data;
+
+        // Guardar en sessionStorage
+        sessionStorage.setItem('username', backendUser.username);
+        sessionStorage.setItem('name', backendUser.name);
+        sessionStorage.setItem('balance', backendUser.balance);
+
+        if (totpSetup) {
+          // Usuario nuevo: redirigir a configurar TOTP
+          navigate('/verify-account', {
+            state: {
+              alias: backendUser.username,
+              qrData: totpSetup,
+              isNewUser: true,
+            },
+          });
+        } else {
+          // Usuario existente: redirigir a Account
+          navigate('/account', {
+            state: {
+              name: backendUser.name,
+              username: backendUser.username,
+              balance: backendUser.balance,
+            },
+          });
+        }
+      } catch (err) {
+        console.error('Error al registrar o autenticar:', err);
+        alert('Error al ingresar. Intentalo nuevamente.');
       }
-    } catch (error) {
-      console.error(error);
-      message.error('Error al iniciar sesión');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    loginOrRegister();
+  }, [isAuthenticated, user, navigate]);
+
+  if (isLoading) {
+    return <div className="container"><div className="card"><p>Cargando...</p></div></div>;
+  }
 
   return (
     <div className="container">
       <div className="card">
         <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
-        <h1 className="auth-title">Iniciar sesión</h1>
-        <p className="auth-subtitle">Ingresá tu alias y el código TOTP</p>
+        <h1 className="auth-title">Bienvenido a RauloCoins</h1>
+        <p className="auth-subtitle">Iniciá sesión para comenzar</p>
 
-        <form onSubmit={handleLogin}>
-          <input
-            type="text"
-            placeholder="Alias"
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            required
-            className="auth-input"
-          />
-          <input
-            type="text"
-            placeholder="Código TOTP"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-            required
-            className="auth-input"
-          />
-
-          <button
-            type="submit"
-            className="auth-button"
-            disabled={loading}
-          >
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
-
-          <p className="auth-p-end">
-            <Link to="/register" className="auth-link">¿No tenés cuenta? Registrate</Link>
-          </p>
-        </form>
+        <button className="auth-button" onClick={() => loginWithRedirect()}>
+          Iniciar sesión con Auth0
+        </button>
       </div>
     </div>
   );

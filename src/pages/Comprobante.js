@@ -1,44 +1,58 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Comprobante = () => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const lastTransfer = JSON.parse(sessionStorage.getItem('lastTransfer'));
+  const { fromUser, toUser, transaction } = location.state || {};
 
-  const handleVolver = () => {
-    sessionStorage.removeItem('lastTransfer');
-    navigate('/account');
-  };
-
-  if (!lastTransfer) {
+  if (!fromUser || !toUser || !transaction) {
     return (
       <div className="container">
         <div className="card">
-          <h1 className="auth-title">Sin comprobante</h1>
-          <p className="auth-subtitle">No hay datos de una transferencia reciente.</p>
-          <button className="auth-button" onClick={handleVolver}>Volver</button>
+          <h1 className="auth-title">Comprobante no disponible</h1>
+          <p className="auth-subtitle">Faltan datos para mostrar la transferencia.</p>
+          <button className="auth-button" onClick={() => navigate('/account')}>
+            Volver a mi cuenta
+          </button>
         </div>
       </div>
     );
   }
 
-  const { fromUsername, toAlias, amount, timestamp, transactionId } = lastTransfer;
-
   return (
     <div className="container">
       <div className="card">
-        <h1 className="auth-title">Comprobante</h1>
-        <p className="auth-subtitle">Tu transferencia fue realizada con éxito</p>
-
-        <div style={{ marginBottom: '15px' }}>
-          <p><strong>De:</strong> {fromUsername}</p>
-          <p><strong>Para:</strong> {toAlias}</p>
-          <p><strong>Monto:</strong> ${parseFloat(amount).toFixed(2)}</p>
-          <p><strong>Fecha:</strong> {new Date(timestamp).toLocaleString()}</p>
-          <p><strong>ID de transacción:</strong> {transactionId}</p>
+        <h1 className="auth-title">Comprobante de Transferencia</h1>
+        <div className="history-container">
+          <table className="history-table">
+            <tbody>
+              <tr>
+                <th>Emisor</th>
+                <td>{fromUser.username}</td>
+              </tr>
+              <tr>
+                <th>Receptor</th>
+                <td>{toUser.username}</td>
+              </tr>
+              <tr>
+                <th>Monto</th>
+                <td>{transaction.amount}</td>
+              </tr>
+              <tr>
+                <th>Fecha</th>
+                <td>{new Date(transaction.date).toLocaleString()}</td>
+              </tr>
+              <tr>
+                <th>ID de operación</th>
+                <td>{transaction.id}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <button className="auth-button" onClick={handleVolver}>Volver al inicio</button>
+        <button className="auth-button" onClick={() => navigate('/account')}>
+          Volver a mi cuenta
+        </button>
       </div>
     </div>
   );
