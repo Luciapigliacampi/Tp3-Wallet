@@ -2,17 +2,16 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Input, Button, message } from 'antd';
 
 const VerifyAccount = () => {
   const location = useLocation();
-  const [alias, setAlias] = useState(location.state?.alias || '');
+  const [alias, setAlias] = useState(location.state?.alias || location.state?.username || '');
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { logout } = useAuth0();
 
-  const qrData = location.state?.qrData;
-  const isNewUser = location.state?.isNewUser === true;
+  const { logout } = useAuth0();
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -33,61 +32,73 @@ const VerifyAccount = () => {
 
       if (res.success) {
         const user = res.user;
+
+        // Guardar datos en sessionStorage
         sessionStorage.setItem('username', user.username);
         sessionStorage.setItem('name', user.name);
+        sessionStorage.setItem('email', user.email);
         sessionStorage.setItem('balance', user.balance);
 
         navigate('/account', {
           state: {
             username: user.username,
             name: user.name,
-            balance: user.balance,
           },
         });
       } else {
-        alert(res.message || 'Código incorrecto');
+        message.error(res.message || 'Código inválido');
       }
     } catch (error) {
-      console.error('Error al verificar código:', error);
-      alert('Error al verificar el código');
-    } finally {
-      setLoading(false);
+      console.error('Error al verificar TOTP:', error);
+      message.error('Error del servidor');
     }
+
+    setLoading(false);
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <img src="/assets/raulCoin.png" alt="raulCoin" className="logo-img" />
-        <h1 className="auth-title">Verificá tu cuenta</h1>
-        <p className="auth-subtitle">Ingresá el código generado por tu app de autenticación</p>
+    <div className="card">
+      <h2 className="title">Verificar Código</h2>
 
-        {qrData && isNewUser && (
-          <>
-            <p className="auth-subtitle">Escaneá este QR con tu app de autenticación:</p>
-            <img src={qrData.qrCode} alt="QR" className="qr-img" />
-            <p className="auth-code">{qrData.manualCode}</p>
-          </>
-        )}
+      <p>Alias:</p>
+      <Input
+        className="input"
+        placeholder="Alias"
+        value={alias}
+        onChange={(e) => setAlias(e.target.value)}
+        disabled
+      />
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-            placeholder="Código TOTP"
-            className="auth-input"
-            required
-          />
-          <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Verificando...' : 'Verificar'}
-          </button>
-        </form>
+      <p>Ingresá tu código TOTP:</p>
+      <Input
+        className="input"
+        placeholder="Código TOTP"
+        value={codigo}
+        onChange={(e) => setCodigo(e.target.value)}
+      />
 
-        <p className="auth-p-end">
-          <button onClick={handleLogout} className="auth-link">Cerrar sesión</button>
-        </p>
-      </div>
+      <Button
+        className="button"
+        type="primary"
+        onClick={handleSubmit}
+        loading={loading}
+        block
+      >
+        Verificar
+      </Button>
+
+      <Button
+        danger
+        type="text"
+        style={{ marginTop: '1rem' }}
+        onClick={handleLogout}
+      >
+        Cerrar sesión
+      </Button>
+
+      <Link to="/recover" className="link">
+        ¿Perdiste tu código?
+      </Link>
     </div>
   );
 };
