@@ -46,11 +46,14 @@ const Profile = () => {
   const handleSave = async () => {
     const { name, username, email } = profileData;
 
-    if (name && name.length > 100) {
+    if (name.length > 100) {
       return message.error('El nombre no puede superar los 100 caracteres');
     }
-    if (username && !/^[a-z0-9._-]{3,30}$/.test(username)) {
-      return message.error('El alias solo puede contener letras minúsculas, números, puntos, guiones y guiones bajos');
+
+    if (!/^[a-z0-9._-]{3,30}$/.test(username)) {
+      return message.error(
+        'El alias solo puede contener letras minúsculas, números, puntos, guiones y guiones bajos'
+      );
     }
 
     setLoading(true);
@@ -77,14 +80,13 @@ const Profile = () => {
 
   return (
     <div className="login-container">
-      <div className="icon-container">
+      <div className="icon-container" style={{ marginBottom: 20 }}>
         <ArrowLeftOutlined
           onClick={() => navigate('/account')}
           className="logout-icon"
-          style={{ fontSize: 22 }}
         />
         <p className="saludo">Perfil</p>
-        <div style={{ width: 22 }} /> {/* espacio para centrar título */}
+        <div style={{ width: 22 }} /> {/* Espaciador para centrar el título */}
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -92,8 +94,8 @@ const Profile = () => {
           src={user?.picture}
           alt="Perfil"
           style={{
-            width: '80px',
-            height: '80px',
+            width: 80,
+            height: 80,
             borderRadius: '50%',
             objectFit: 'cover',
             border: '2px solid #ccc',

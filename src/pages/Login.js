@@ -5,7 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Login = () => {
-  const { loginWithRedirect, user, isAuthenticated, isLoading, getIdTokenClaims, getAccessTokenSilently } = useAuth0();
+  const {
+    loginWithRedirect,
+    user,
+    isAuthenticated,
+    isLoading,
+    getIdTokenClaims,
+    getAccessTokenSilently,
+  } = useAuth0();
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,16 +23,21 @@ const Login = () => {
         const accessToken = await getAccessTokenSilently();
 
         const payload = {
-          auth0_payload: idToken.__raw ? JSON.parse(atob(idToken.__raw.split('.')[1])) : user,
+          auth0_payload: idToken.__raw
+            ? JSON.parse(atob(idToken.__raw.split('.')[1]))
+            : user,
           auth0_tokens: {
             id_token: idToken.__raw,
             access_token: accessToken,
-            token_type: "Bearer",
-            scope: "openid profile email"
-          }
+            token_type: 'Bearer',
+            scope: 'openid profile email',
+          },
         };
 
-        const response = await axios.post("https://raulocoin.onrender.com/api/auth0/authenticate", payload);
+        const response = await axios.post(
+          'https://raulocoin.onrender.com/api/auth0/authenticate',
+          payload
+        );
         const res = response.data;
 
         if (res.success && res.user) {
@@ -34,21 +47,19 @@ const Login = () => {
           sessionStorage.setItem('balance', res.user.balance);
 
           if (res.needsTotpSetup) {
-            // Usuario nuevo o TOTP pendiente de configuración
             navigate('/verify-account', {
               state: {
                 username: res.user.username,
                 qrData: res.totpSetup,
-                isNewUser: res.existingUser === false
-              }
+                isNewUser: res.existingUser === false,
+              },
             });
           } else if (!res.user.totpVerified) {
-            // Usuario existente pero no ha verificado el código aún
             navigate('/verify-account', {
               state: {
                 alias: res.user.username,
-                isNewUser: false
-              }
+                isNewUser: false,
+              },
             });
           } else {
             navigate('/account', {
@@ -60,12 +71,11 @@ const Login = () => {
             });
           }
         } else {
-          alert("No se pudo autenticar el usuario");
+          alert('No se pudo autenticar el usuario');
         }
-
       } catch (error) {
         console.error('Error al autenticar con el backend:', error);
-        alert("Error al conectar con el servidor");
+        alert('Error al conectar con el servidor');
       }
     };
 

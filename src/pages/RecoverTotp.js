@@ -19,7 +19,7 @@ const RecoverTotp = () => {
     setTotpData(null);
 
     try {
-      const response = await axios.post("https://raulocoin.onrender.com/api/regenerate-totp", {
+      const response = await axios.post('https://raulocoin.onrender.com/api/regenerate-totp', {
         username: values.alias,
         email: values.email,
       });
@@ -30,24 +30,25 @@ const RecoverTotp = () => {
         message.success(res.message);
         setTotpData(res.totpSetup);
       } else {
-        message.error(res.message || "No se pudo recuperar el TOTP");
+        message.error(res.message || 'No se pudo recuperar el TOTP');
       }
-
     } catch (error) {
-      console.error("Error al recuperar TOTP:", error);
-      message.error("Error al contactar el servidor");
+      console.error('Error al recuperar TOTP:', error);
+      message.error('Error al contactar el servidor');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="recover-container" style={{ maxWidth: 450, margin: 'auto', paddingTop: '3rem' }}>
+    <div className="login-container" style={{ maxWidth: 450, margin: 'auto', paddingTop: '3rem' }}>
       <Button onClick={handleVolver} style={{ marginBottom: '1rem' }}>
         ← Volver
       </Button>
 
-      <Title level={2} style={{ textAlign: 'center' }}>Recuperar TOTP</Title>
+      <Title level={2} style={{ textAlign: 'center' }}>
+        Recuperar TOTP
+      </Title>
 
       <Form layout="vertical" onFinish={onFinish}>
         <Form.Item
@@ -81,7 +82,7 @@ const RecoverTotp = () => {
             type="success"
             showIcon
           />
-          <img src={totpData.qrCodeUrl} alt="QR Code" style={{ marginTop: 20 }} />
+          <img src={totpData.qrCodeUrl} alt="QR Code" className="qr-img" style={{ marginTop: 20 }} />
           <Paragraph copyable style={{ marginTop: 20 }}>
             <strong>Código manual:</strong> {totpData.manualSetupCode}
           </Paragraph>

@@ -192,3 +192,8 @@ body {
     max-width: 200px;
   }
 }
+
+.transferencias-container {
+  max-height: 400px; /* o lo que necesites */
+  overflow-y: auto;
+}

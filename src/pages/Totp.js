@@ -15,28 +15,36 @@ const Totp = () => {
 
   return (
     <div className="login-container">
-        <img
-            src={"/assets/raulCoin.png"}
-            alt={"raulCoin"}
-            className='logo-img'
-        />
-        <h1 className='auth-title'>Autenticación</h1>
-        <p className='auth-subtitle'>Escanea este código QR con tu aplicación de autenticación</p>
+      <img
+        src="/assets/raulCoin.png"
+        alt="raulCoin"
+        className="logo-img"
+      />
+      <h1 className="auth-title">Autenticación</h1>
+      <p className="auth-subtitle">Escaneá este código QR con tu app de autenticación</p>
 
-        <img className='qr-img' src={totpSetup.qrCodeUrl} alt="TOTP QR Code" style={{ maxWidth: 300 }} />
+      <img
+        className="qr-img"
+        src={totpSetup.qrCodeUrl}
+        alt="Código QR TOTP"
+        style={{ maxWidth: 300 }}
+      />
 
-        <p
-            className="auth-code"
-            onClick={() => navigator.clipboard.writeText(totpSetup.manualSetupCode)}
-            title="Haz clic para copiar"
-        >
-            {totpSetup.manualSetupCode}
-        </p>
+      <p
+        className="auth-code"
+        onClick={() => navigator.clipboard.writeText(totpSetup.manualSetupCode)}
+        title="Haz clic para copiar"
+      >
+        {totpSetup.manualSetupCode}
+      </p>
 
-
-        <Button type="primary" className='auth-button' onClick={() => navigate('/')}>
-            Ingresar
-        </Button>
+      <Button
+        type="primary"
+        className="auth-button"
+        onClick={() => navigate('/')}
+      >
+        Ingresar
+      </Button>
     </div>
   );
 };
