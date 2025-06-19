@@ -5,6 +5,8 @@ import { Input, Button } from 'antd';
 
 const VerifyAccount = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
   const username = location.state?.username || location.state?.alias || '';
   const qrData = location.state?.qrData;
   const isNewUser = location.state?.isNewUser === true;
@@ -12,7 +14,6 @@ const VerifyAccount = () => {
   const [alias, setAlias] = useState(username);
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +30,6 @@ const VerifyAccount = () => {
       if (res.success) {
         const user = res.user;
 
-        // Guardar datos en sessionStorage
         sessionStorage.setItem('username', user.username);
         sessionStorage.setItem('name', user.name);
         sessionStorage.setItem('balance', user.balance);
@@ -54,12 +54,9 @@ const VerifyAccount = () => {
   };
 
   const handleGoBack = () => {
-  // Limpia sessionStorage si querés
-  sessionStorage.clear();
-
-  // Redirige forzado al login
-  window.location.href = '/';
-};
+    sessionStorage.clear();
+    window.location.href = '/';
+  };
 
   return (
     <div className="login-container">
@@ -69,14 +66,14 @@ const VerifyAccount = () => {
       {isNewUser && (
         <>
           <p className="saludo">
-            ¡Bienvenida! Tu alias generado es: <strong>{username}</strong><br />
-            Guardalo porque lo necesitarás para transferencias y validaciones.
+            ¡Bienvenida! Tu alias generado es: <strong>{username}</strong>
+            <br />Guardalo porque lo necesitarás para transferencias y validaciones.
           </p>
 
           {qrData && (
             <div style={{ marginTop: 20 }}>
               <p>Escaneá este código QR con Google Authenticator o ingresá el código manual:</p>
-              <img src={qrData.qrCodeUrl} alt="QR TOTP" style={{ maxWidth: 200 }} />
+              <img src={qrData.qrCodeUrl} alt="QR TOTP" className="qr-img" />
               <p>Código manual: <strong>{qrData.manualSetupCode}</strong></p>
               <p>{qrData.instructions}</p>
             </div>
@@ -106,7 +103,12 @@ const VerifyAccount = () => {
           className="auth-input"
         />
 
-        <Button type="primary" htmlType="submit" className="auth-button" disabled={loading}>
+        <Button
+          type="primary"
+          htmlType="submit"
+          className="auth-button"
+          disabled={loading}
+        >
           {loading ? 'Cargando...' : 'Verificar'}
         </Button>
 
