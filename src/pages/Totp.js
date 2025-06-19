@@ -1,54 +1,42 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { Input, Button, message } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Button, message } from 'antd';
 
 const Totp = () => {
-  const [codigo, setCodigo] = useState('');
+  const location = useLocation();
   const navigate = useNavigate();
+  const totpSetup = location.state;
 
-  const handleVerify = async () => {
-    try {
-      const username = sessionStorage.getItem('username');
-
-      const response = await axios.post('https://raulocoin.onrender.com/api/verify-totp', {
-        username,
-        totpToken: codigo,
-      });
-
-      const res = response.data;
-
-      if (res.success) {
-        sessionStorage.setItem('balance', res.user.balance);
-        sessionStorage.setItem('name', res.user.name);
-
-        navigate('/account', {
-          state: {
-            username: res.user.username,
-            name: res.user.name,
-          },
-        });
-      } else {
-        message.error('Código inválido');
-      }
-    } catch (error) {
-      console.error(error);
-      message.error('Error al verificar el código');
-    }
-  };
+  if (!totpSetup) {
+    message.warning('No hay configuración TOTP. Regístrate primero.');
+    navigate('/');
+    return null;
+  }
 
   return (
-    <div className="card">
-      <h2 className="title">Verificación TOTP</h2>
-      <Input
-        className="input"
-        placeholder="Código TOTP"
-        value={codigo}
-        onChange={(e) => setCodigo(e.target.value)}
-      />
-      <Button className="button" onClick={handleVerify}>
-        Verificar
-      </Button>
+    <div className="login-container">
+        <img
+            src={"/assets/raulCoin.png"}
+            alt={"raulCoin"}
+            className='logo-img'
+        />
+        <h1 className='auth-title'>Autenticación</h1>
+        <p className='auth-subtitle'>Escanea este código QR con tu aplicación de autenticación</p>
+
+        <img className='qr-img' src={totpSetup.qrCodeUrl} alt="TOTP QR Code" style={{ maxWidth: 300 }} />
+
+        <p
+            className="auth-code"
+            onClick={() => navigator.clipboard.writeText(totpSetup.manualSetupCode)}
+            title="Haz clic para copiar"
+        >
+            {totpSetup.manualSetupCode}
+        </p>
+
+
+        <Button type="primary" className='auth-button' onClick={() => navigate('/')}>
+            Ingresar
+        </Button>
     </div>
   );
 };

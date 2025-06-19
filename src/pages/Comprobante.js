@@ -33,37 +33,55 @@ const Comprobante = () => {
     doc.setFont('helvetica', 'normal');
     let y = 40;
 
-    doc.text(` De: ${tx.fromName || tx.from?.name || 'Sistema'} (${tx.fromUsername || tx.from?.username || ''})`, 25, y); y += 10;
-    doc.text(` Para: ${tx.toName || tx.to?.name || 'Desconocido'} (${tx.toUsername || tx.to?.username || ''})`, 25, y); y += 10;
-    doc.text(` Monto: ${tx.amount} Raulocoins`, 25, y); y += 10;
-    doc.text(` Descripción: ${tx.description || '-'}`, 25, y); y += 10;
+    doc.text(` De: ${tx.fromName || tx.from?.name || 'Sistema'} (${tx.fromUsername || tx.from?.username || ''})`, 25, y);
+    y += 10;
+    doc.text(` Para: ${tx.toName || tx.to?.name || 'Desconocido'} (${tx.toUsername || tx.to?.username || ''})`, 25, y);
+    y += 10;
+    doc.text(` Monto: ${tx.amount} Raulocoins`, 25, y);
+    y += 10;
+    doc.text(` Descripción: ${tx.description || '-'}`, 25, y);
+    y += 10;
     doc.text(` Fecha: ${new Date((tx.timestamp || tx.createdAt) * 1000).toLocaleString()}`, 25, y);
 
     doc.setFontSize(10);
     doc.setTextColor(150);
-    doc.text('Gracias por usar Raulocoin', 105, 130, null, null, 'center');
+    doc.text('Gracias por usar Raulocoin ', 105, 130, null, null, 'center');
 
     doc.save('comprobante-transferencia.pdf');
   };
 
-  if (!tx) return null;
-
   return (
-    <div className="card">
-      <h2 className="title">Comprobante</h2>
-      <p><strong>De:</strong> {tx.fromName || tx.from?.name} (@{tx.fromUsername || tx.from?.username})</p>
-      <p><strong>Para:</strong> {tx.toName || tx.to?.name} (@{tx.toUsername || tx.to?.username})</p>
-      <p><strong>Monto:</strong> {tx.amount} Raulocoins</p>
-      <p><strong>Descripción:</strong> {tx.description || '-'}</p>
-      <p><strong>Fecha:</strong> {new Date((tx.timestamp || tx.createdAt) * 1000).toLocaleString()}</p>
+    <div className="login-container">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: 20 }}>
+        <Button
+          type="primary"
+          className="auth-button"
+          onClick={() => navigate(-1)}
+          style={{ width: 'auto', padding: '0 16px' }}
+        >
+          ← Volver
+        </Button>
+        <h2 className="auth-title" style={{ margin: 0 }}>Comprobante</h2>
+      </div>
 
-      <Button className="button" onClick={generarPDF}>
-        Descargar PDF
-      </Button>
+      {tx && (
+        <div className="user-container">
+          <p className="saludo"><strong>De:</strong> {tx.fromName || tx.from?.name} ({tx.fromUsername || tx.from?.username})</p>
+          <p className="saludo"><strong>Para:</strong> {tx.toName || tx.to?.name} ({tx.toUsername || tx.to?.username})</p>
+          <p className="saludo"><strong>Monto:</strong> {tx.amount} Raulocoins</p>
+          <p className="saludo"><strong>Descripción:</strong> {tx.description}</p>
+          <p className="saludo"><strong>Fecha:</strong> {new Date((tx.timestamp || tx.createdAt) * 1000).toLocaleString()}</p>
 
-      <Button className="button" onClick={() => navigate('/account')} style={{ marginTop: '1rem' }}>
-        Volver a cuenta
-      </Button>
+          <Button
+            type="primary"
+            className="auth-button"
+            onClick={generarPDF}
+            style={{ marginTop: 15 }}
+          >
+            Descargar comprobante
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

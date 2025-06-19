@@ -1,94 +1,87 @@
 import React, { useState } from 'react';
+import { Button, Input, message } from 'antd';
 import axios from 'axios';
-import { Input, Button, message } from 'antd';
+import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
 const Register = () => {
-  const navigate = useNavigate();
-  const [alias, setAlias] = useState('');
   const [email, setEmail] = useState('');
+  const [alias, setAlias] = useState('');
   const [nombre, setNombre] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); 
 
-  const handleRegister = async () => {
-    if (!alias || !email || !nombre) {
-      message.error('Por favor completá todos los campos');
-      return;
-    }
-
+  const handleSubmit = (e) => {
+    e.preventDefault();
     setLoading(true);
 
-    try {
-      const response = await axios.post('https://raulocoin.onrender.com/api/register', {
-        username: alias,
-        email,
+    const data = {
         name: nombre,
+        username: alias,  
+        email: email, 
+    };
+
+    axios.post('https://raulocoin.onrender.com/api/register', data)
+      .then((response) => {
+        const res = response.data;
+        if (res.success) {
+          navigate('/totp', { state: res.totpSetup });
+        } else {
+          message.error(res.message || 'Error al registrarse');
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        setLoading(false);
       });
+    };
 
-      const res = response.data;
+    return (
+        <div className="login-container">
+            <img
+                src={"/assets/raulCoin.png"}
+                alt={"raulCoin"}
+                className='logo-img'
+            />
+            <h1 className='auth-title'>Regístrate</h1>
+            <p className='auth-subtitle'>¡Empecemos esta aventura juntos!</p>
+            <form onSubmit={handleSubmit}>
+                <Input
+                type="text"
+                placeholder="Nombre"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+                className='auth-input'
+                />
+                <Input
+                type="text"
+                placeholder="Correo electrónico"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className='auth-input'
+                />
+                <Input
+                type="text"
+                placeholder="Alias"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                required
+                className='auth-input'
+                />
+                <Button type="primary" htmlType="submit" className='auth-button' disabled={loading}>
+                {loading ? 'Cargando...' : 'Registrarme'}
+                </Button>
 
-      if (res.success) {
-        const user = res.user;
-        const totpSetup = res.totpSetup;
-
-        // Guardar datos en sessionStorage
-        sessionStorage.setItem('username', user.username);
-        sessionStorage.setItem('name', user.name);
-        sessionStorage.setItem('email', user.email);
-
-        navigate('/verify-account', {
-          state: {
-            username: user.username,
-            qrData: totpSetup,
-            isNewUser: true,
-          },
-        });
-      } else {
-        message.error(res.message || 'Error al registrar usuario');
-      }
-    } catch (error) {
-      console.error('Error en registro:', error);
-      message.error('Error del servidor');
-    }
-
-    setLoading(false);
-  };
-
-  return (
-    <div className="card">
-      <h2 className="title">Registrarse</h2>
-
-      <Input
-        className="input"
-        placeholder="Alias"
-        value={alias}
-        onChange={(e) => setAlias(e.target.value)}
-      />
-
-      <Input
-        className="input"
-        placeholder="Nombre completo"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-      />
-
-      <Input
-        className="input"
-        placeholder="Email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <Button className="button" onClick={handleRegister} loading={loading}>
-        Registrarme
-      </Button>
-
-      <a href="/" className="link">
-        ¿Ya tenés cuenta? Iniciar sesión
-      </a>
-    </div>
-  );
+                <p className='auth-p-end'>
+                <Link className='auth-link' to="/">Iniciar sesión</Link>
+                </p>
+            </form>
+        </div>
+    );
 };
 
 export default Register;

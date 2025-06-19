@@ -68,7 +68,7 @@ const Historial = () => {
       filtered = filtered.filter((tx) => {
         const txDate = dayjs.unix(tx.createdAt);
         return txDate.isAfter(start.startOf('day').subtract(1, 'second')) &&
-               txDate.isBefore(end.endOf('day').add(1, 'second'));
+          txDate.isBefore(end.endOf('day').add(1, 'second'));
       });
     }
 
@@ -81,79 +81,136 @@ const Historial = () => {
     }
 
     if (type !== 'todos') {
-      filtered = filtered.filter((tx) => {
-        const isIncoming = tx.toUsername === username;
-        return (type === 'entrantes' && isIncoming) || (type === 'salientes' && !isIncoming);
-      });
+      filtered = filtered.filter((tx) => tx.type === type);
     }
 
     setFilteredTransactions(filtered);
   };
 
-  useEffect(() => {
-    applyFilters(dateRange, aliasFilter, transactionType);
-  }, [transactions, dateRange, aliasFilter, transactionType]);
+  const handleDateChange = (range) => {
+    setDateRange(range);
+    applyFilters(range, aliasFilter, transactionType);
+  };
 
-  const renderItem = (item) => (
-    <List.Item style={{ whiteSpace: 'pre-line' }}>
-      <div>
-        <p><strong>De:</strong> {item.fromName} (@{item.fromUsername})</p>
-        <p><strong>Para:</strong> {item.toName} (@{item.toUsername})</p>
-        <p><strong>Monto:</strong> {item.amount} Raulocoins</p>
-        <p><strong>Descripción:</strong> {item.description || '-'}</p>
-        <p><strong>Fecha:</strong> {dayjs.unix(item.createdAt).format('DD/MM/YYYY HH:mm')}</p>
-        <Button
-          className="button"
-          type="primary"
-          icon={<DownloadOutlined />}
-          onClick={() => navigate('/comprobante', { state: { tx: item } })}
-        >
-          Ver comprobante
-        </Button>
-      </div>
-    </List.Item>
-  );
+  const handleAliasChange = (e) => {
+    const alias = e.target.value;
+    setAliasFilter(alias);
+    applyFilters(dateRange, alias, transactionType);
+  };
+
+  const handleTypeChange = (value) => {
+    setTransactionType(value);
+    applyFilters(dateRange, aliasFilter, value);
+  };
+
+  const clearFilters = () => {
+    setDateRange([]);
+    setAliasFilter('');
+    setTransactionType('todos');
+    setFilteredTransactions(transactions);
+  };
 
   return (
-    <div className="card">
-      <h2 className="title">Historial de transacciones</h2>
+    <div className='login-container'>
+      <Button
+        type="primary"
+        className="auth-button"
+        onClick={() => navigate(-1)}
+        style={{ width: 'auto', padding: '0 16px', marginBottom: 10 }}
+      >
+        ← Volver
+      </Button>
 
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <RangePicker
-          style={{ width: '100%' }}
-          onChange={(range) => setDateRange(range)}
-          value={dateRange}
-        />
+      <h2 className="auth-title">Historial Completo de Transferencias</h2>
+      <p className="saludo">Usuario: {name} ({username})</p>
 
-        <Input
-          className="input"
-          placeholder="Filtrar por alias"
-          value={aliasFilter}
-          onChange={(e) => setAliasFilter(e.target.value)}
-        />
+      <div className="user-container" style={{ marginTop: 20 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <div>
+            <small style={{ color: '#494949' }}>Filtrar por rango de fechas:</small>
+            <RangePicker
+              onChange={handleDateChange}
+              value={dateRange}
+              format="YYYY-MM-DD"
+              style={{ width: '100%' }}
+            />
+          </div>
 
-        <Select
-          className="input"
-          value={transactionType}
-          onChange={setTransactionType}
-        >
-          <Option value="todos">Todos</Option>
-          <Option value="entrantes">Entrantes</Option>
-          <Option value="salientes">Salientes</Option>
-        </Select>
-      </Space>
+          <div>
+            <small style={{ color: '#494949' }}>Filtrar por alias:</small>
+            <Input
+              placeholder="Filtrar por alias (nombre o usuario)"
+              value={aliasFilter}
+              onChange={handleAliasChange}
+              allowClear
+              className="auth-input"
+            />
+          </div>
 
-      <div className="scrollable" style={{ marginTop: '1rem' }}>
-        <List
-          loading={loading}
-          dataSource={filteredTransactions}
-          renderItem={renderItem}
-        />
+          <div>
+            <small style={{ color: '#494949' }}>Filtrar por categoría:</small>
+            <Select
+              value={transactionType}
+              onChange={handleTypeChange}
+              style={{ width: '100%' }}
+            >
+              <Option value="todos">Todos</Option>
+              <Option value="sent">Enviados</Option>
+              <Option value="received">Recibidos</Option>
+            </Select>
+          </div>
+
+          <Button
+            className="auth-button"
+            onClick={clearFilters}
+            style={{ width: '100%' }}
+          >
+            Limpiar filtros
+          </Button>
+        </Space>
       </div>
 
-      <Button className="button" style={{ marginTop: '1rem' }} onClick={() => navigate('/account')}>
-        Volver a cuenta
-      </Button>
+      <div className="history-container">
+        {loading ? (
+          <p>Cargando transacciones...</p>
+        ) : filteredTransactions.length > 0 ? (
+          <List
+            style={{ marginTop: 20 }}
+            bordered
+            dataSource={filteredTransactions}
+            renderItem={(tx) => {
+              const isSent = tx.type === 'sent';
+              const counterpart = isSent
+                ? tx.toName || 'Desconocido'
+                : tx.fromName || tx.awardedBy || 'Sistema';
+
+              return (
+                <List.Item style={{ position: 'relative', paddingTop: 30 }}>
+                  <Button
+                    type="text"
+                    icon={<DownloadOutlined style={{ fontSize: 20, color: 'black' }} />}
+                    onClick={() => navigate('/comprobante', { state: { tx } })}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      padding: '6px 12px',
+                    }}
+                  />
+                  <div style={{ width: '100%' }}>
+                    <p><strong>{isSent ? 'Enviado a' : 'Recibido de'}:</strong> {counterpart}</p>
+                    <p><strong>Monto:</strong> {tx.amount > 0 ? '+' : ''}{tx.amount}</p>
+                    <p><strong>Descripción:</strong> {tx.description}</p>
+                    <p><strong>Fecha:</strong> {new Date(tx.createdAt * 1000).toLocaleString()}</p>
+                  </div>
+                </List.Item>
+              );
+            }}
+          />
+        ) : (
+          <p>No hay transacciones para mostrar.</p>
+        )}
+      </div>
     </div>
   );
 };
